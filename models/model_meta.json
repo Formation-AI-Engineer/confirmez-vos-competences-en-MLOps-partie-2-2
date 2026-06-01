@@ -1,0 +1,9 @@
+{
+  "model_type": "LGBMClassifier",
+  "n_features": 804,
+  "best_threshold": 0.49,
+  "val_best_threshold": 0.54,
+  "best_score_cv": 0.7724921519311373,
+  "dataset_version": "4247222185ae",
+  "train_size": 246005
+}

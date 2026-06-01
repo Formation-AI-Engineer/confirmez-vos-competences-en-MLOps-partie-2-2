@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Environnement virtuel
+.venv/
+env/
+venv/
+
+# Secrets / config locale
+.env
+*.local
+
+# Données sensibles / volumineuses
+data/
+*.csv
+
+# Logs de production (générés par l'API)
+logs/
+*.log
+monitoring/production_logs.*
+
+# Rapports générés
+monitoring/reports/
+*.html.bak
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Docker
+*.pid

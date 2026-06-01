@@ -1,0 +1,41 @@
+[project]
+name = "deployez-monitorez-modele-scoring"
+version = "0.1.0"
+description = "Déploiement et monitoring du modèle de scoring crédit Prêt à Dépenser — MLOps Partie 2/2 (API + Docker + CI/CD + drift)"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+
+dependencies = [
+    "lightgbm==4.6.0",
+    "scikit-learn==1.7.2",
+    "joblib==1.5.3",
+    "pandas>=2.0.0",
+    "numpy>=1.26.0",
+    "pyarrow>=23.0.1",
+    # --- API ---
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic>=2.7.0",
+    "python-dotenv>=1.0.0",
+    # --- Monitoring / drift ---
+    "evidently>=0.4.0",
+    "streamlit>=1.36.0",
+    "plotly>=5.22.0",
+    "matplotlib>=3.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "httpx>=0.27.0",
+    "ruff>=0.5.0",
+    "jupyter>=1.0.0",
+    "ipykernel>=6.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
