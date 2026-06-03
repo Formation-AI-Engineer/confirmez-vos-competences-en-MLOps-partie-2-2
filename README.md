@@ -1,3 +1,13 @@
+---
+title: Scoring Crédit Prêt à Dépenser
+emoji: 💳
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Déployez et monitorez votre modèle de scoring — Prêt à Dépenser (MLOps 2/2)
 
 Mise en production du modèle de scoring crédit développé au Projet 6 (« Initiez-vous au MLOps ») :
@@ -5,6 +15,11 @@ Mise en production du modèle de scoring crédit développé au Projet 6 (« Ini
 
 > Projet OpenClassrooms — *Confirmez vos compétences en MLOps (Partie 2/2)*.
 > Suivi détaillé des tâches dans [`docs/fiche_taches_projet8.md`](docs/fiche_taches_projet8.md).
+
+## Démo en ligne
+
+- **Space Hugging Face** : <https://huggingface.co/spaces/lcamara/scoring-credit-pret-a-depenser>
+- **Swagger UI** : <https://lcamara-scoring-credit-pret-a-depenser.hf.space/docs>
 
 ## Sommaire
 
@@ -15,6 +30,7 @@ Mise en production du modèle de scoring crédit développé au Projet 6 (« Ini
 - [Lancer l'API](#lancer-lapi)
 - [Exemples d'appels](#exemples-dappels)
 - [Tests](#tests)
+- [Déploiement](#déploiement)
 - [Structure du projet](#structure-du-projet)
 
 ## Modèle servi
@@ -128,6 +144,22 @@ curl http://localhost:8000/model/info
 uv run pytest
 ```
 
+## Déploiement
+
+L'API est déployée automatiquement sur **Hugging Face Spaces** (type Docker) via GitHub Actions.
+
+Pipeline : [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml)
+
+```
+lint (ruff) → test (pytest + --check artefacts) → build (docker) → deploy (HF Spaces)
+```
+
+Déclencheurs :
+- `push` sur `dev` ou PR vers `main` → **lint + test + build** (feedback rapide, pas de deploy)
+- `push` sur `main` ou tag `v*` → **lint + test + build + deploy** vers le Space HF
+
+Le job `deploy` force-push le dépôt vers le repo Git du Space ; le Space (mode **Docker**, port 7860 via l'en-tête YAML de ce README) build l'image à partir du `Dockerfile`. Secret requis côté GitHub : `HF_TOKEN` (scope *write*).
+
 ## Structure du projet
 
 ```
@@ -140,5 +172,5 @@ notebooks/   analyses (drift, profiling)
 docs/        fiches d'étape et de suivi
 ```
 
-> Les sections **Déploiement (CI/CD)** et **Monitoring du data drift** seront ajoutées aux étapes 2.4–2.5 et 3.
+> La section **Monitoring du data drift** sera ajoutée à l'étape 3.
 ```

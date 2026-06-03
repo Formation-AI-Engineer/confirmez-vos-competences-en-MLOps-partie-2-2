@@ -38,17 +38,20 @@ tests + build + déploiement via un pipeline CI/CD (GitHub Actions).
 - [x] Empreinte maîtrisée : **image 637 Mo** (monitoring déplacé en extra), `HEALTHCHECK` sur `/health` → `healthy`
 
 ### 2.4 Pipeline CI/CD (GitHub Actions)
-- [ ] Workflow `.github/workflows/ci-cd.yml` déclenché sur push `main`
-- [ ] Job **test** : install deps + `pytest`
-- [ ] Étape **vérification des artefacts** : `python scripts/generate_model_artifacts.py --check` (échoue si `feature_names.json` / `model_meta.json` / `reference_sample.parquet` sont désynchronisés du bundle)
-- [ ] Job **build** : build de l'image Docker si les tests passent
-- [ ] Job **deploy** : push de l'image / déploiement sur l'environnement cible (simulé ou réel)
-- [ ] **Secrets** gérés via GitHub Secrets (jamais en clair)
+- [x] Workflow `.github/workflows/ci-cd.yml` (push `main`/`dev`/tags `v*`, PR vers `main`) ; install via `uv`
+- [x] Job **lint** : `ruff check` + `ruff format --check` (config `[tool.ruff]`, line-length 100)
+- [x] Job **test** : `uv sync --extra dev` + `pytest` (needs lint)
+- [x] Étape **vérification des artefacts** : `python scripts/generate_model_artifacts.py --check` (échoue si `feature_names.json` / `model_meta.json` / `reference_sample.parquet` sont désynchronisés du bundle)
+- [x] Job **build** : `docker build` de l'image si les tests passent (needs test)
+- [x] Job **deploy** : force-push du dépôt vers le Space Hugging Face (needs build, `main`/tags uniquement)
+- [x] **Secrets** via GitHub Secrets (`HF_TOKEN`, `HF_SPACE_ID`) — *à configurer à l'étape 2.5 pour activer le deploy*
 
 ### 2.5 Déploiement
-- [ ] Choisir la plateforme : **Hugging Face Spaces** (simple) / Google Cloud Run / Heroku
-- [ ] Déploiement automatisé depuis le pipeline
-- [ ] **URL publique** de l'API testée (curl/Postman) + Swagger accessible
+- [x] Plateforme choisie : **Hugging Face Spaces** (type Docker)
+- [x] Space créé : `lcamara/scoring-credit-pret-a-depenser` ; secret `HF_TOKEN` ajouté côté GitHub
+- [x] En-tête YAML HF dans le `README.md` (`sdk: docker`, `app_port: 7860`) + `HF_SPACE_ID` dans le workflow
+- [x] Déploiement automatisé depuis le pipeline (job `deploy` sur push `main`/tags)
+- [ ] **URL publique** de l'API testée (curl/Postman) + Swagger accessible — *après le 1er push sur `main`*
 
 ## Points de vigilance
 - **Charger le modèle une seule fois** : sinon lenteurs / échec sous charge (rappel fort de l'énoncé).

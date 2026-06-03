@@ -22,7 +22,9 @@ def test_predict_known_client(client, sample_features):
 
 def test_predict_subset_of_features(client):
     """Un sous-ensemble de features est accepté (les manquantes deviennent NaN)."""
-    r = client.post("/predict", json={"features": {"AMT_CREDIT": 500000, "AMT_INCOME_TOTAL": 180000}})
+    r = client.post(
+        "/predict", json={"features": {"AMT_CREDIT": 500000, "AMT_INCOME_TOTAL": 180000}}
+    )
     assert r.status_code == 200
     assert r.json()["n_features_received"] == 2
 
