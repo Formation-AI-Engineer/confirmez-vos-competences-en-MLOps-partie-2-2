@@ -158,7 +158,7 @@ Déclencheurs :
 - `push` sur `dev` ou PR vers `main` → **lint + test + build** (feedback rapide, pas de deploy)
 - `push` sur `main` ou tag `v*` → **lint + test + build + deploy** vers le Space HF
 
-Le job `deploy` force-push le dépôt vers le repo Git du Space ; le Space (mode **Docker**, port 7860 via l'en-tête YAML de ce README) build l'image à partir du `Dockerfile`. Secret requis côté GitHub : `HF_TOKEN` (scope *write*).
+Le job `deploy` envoie les fichiers nécessaires (Dockerfile, `app/`, `models/`, README, `pyproject.toml`) vers le Space via l'API `huggingface_hub` (`scripts/deploy_hf.py`) — ce qui gère nativement le modèle binaire (`.joblib`) en LFS/Xet, là où un `git push` classique est refusé par HF. Le Space (mode **Docker**, port 7860 via l'en-tête YAML de ce README) reconstruit alors l'image à partir du `Dockerfile`. Secret requis côté GitHub : `HF_TOKEN` (scope *write*).
 
 ## Structure du projet
 
