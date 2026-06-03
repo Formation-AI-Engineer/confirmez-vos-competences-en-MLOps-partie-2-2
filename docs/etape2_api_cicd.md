@@ -22,14 +22,14 @@ tests + build + déploiement via un pipeline CI/CD (GitHub Actions).
 - [ ] (Optionnel) interface **Gradio/Streamlit** de démonstration par-dessus l'API
 
 ### 2.2 Tests unitaires automatisés
-- [ ] Test du health check
-- [ ] Test d'une prédiction nominale (valeurs valides → score cohérent)
-- [ ] **Cas critiques** :
-  - [ ] champ obligatoire manquant
-  - [ ] valeur hors plage (ex. âge négatif, revenu = 0)
-  - [ ] mauvais type (texte là où un nombre est attendu)
-- [ ] Test que le modèle est chargé une seule fois (pas de rechargement par requête)
-- [ ] `pytest` vert en local
+- [x] Test du health check (`/health` + redirection `/`)
+- [x] Test d'une prédiction nominale (client 0 de la référence → proba 0.367 / accordé)
+- [x] **Cas critiques** :
+  - [x] champ obligatoire manquant (`features` absent + dict vide → 422)
+  - [N/A] valeur hors plage : non applicable — les 804 features sont déjà encodées et certaines sont légitimement négatives (`DAYS_BIRTH`…). Remplacé par : clés inconnues ignorées sans erreur
+  - [x] mauvais type (texte là où un nombre est attendu → 422)
+- [x] Test que le modèle est chargé une seule fois (singleton, monkeypatch sur `joblib.load`)
+- [x] `pytest` vert en local (**11 tests passés**)
 
 ### 2.3 Conteneurisation Docker
 - [ ] `Dockerfile` (image légère type `python:3.11-slim`, install deps, copie code + modèle, `uvicorn`)
