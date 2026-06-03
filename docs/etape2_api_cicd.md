@@ -32,10 +32,10 @@ tests + build + déploiement via un pipeline CI/CD (GitHub Actions).
 - [x] `pytest` vert en local (**11 tests passés**)
 
 ### 2.3 Conteneurisation Docker
-- [ ] `Dockerfile` (image légère type `python:3.11-slim`, install deps, copie code + modèle, `uvicorn`)
-- [ ] `.dockerignore`
-- [ ] `docker build` + `docker run` testés en local (API répond sur le port exposé)
-- [ ] Vérifier l'empreinte mémoire / le temps de démarrage
+- [x] `Dockerfile` (`python:3.10-slim` + `libgomp1` pour LightGBM, install deps API-only, copie code + modèle, `uvicorn` port 7860)
+- [x] `.dockerignore` (déjà présent ; exclut venv, docs, notebooks, PDF, données…)
+- [x] `docker build` + `docker run` testés en local (`/health`, `/model/info`, `/predict` OK sur le port 7860)
+- [x] Empreinte maîtrisée : **image 637 Mo** (monitoring déplacé en extra), `HEALTHCHECK` sur `/health` → `healthy`
 
 ### 2.4 Pipeline CI/CD (GitHub Actions)
 - [ ] Workflow `.github/workflows/ci-cd.yml` déclenché sur push `main`
