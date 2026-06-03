@@ -25,6 +25,7 @@ du modèle de scoring produits au **Projet 6** sur lesquels toute la mission s'a
 - [x] Échantillon de validation figé : `monitoring/reference_sample.parquet` (100 × 804) — **référence drift**
 - [x] `dataset_version` = `4247222185ae` ; métadonnées extraites dans `models/model_meta.json`
 - [x] Liste des 804 features figée dans `models/feature_names.json`
+- [x] Dérivation reproductible : `scripts/generate_model_artifacts.py` régénère `feature_names.json`, `model_meta.json` et `reference_sample.parquet` depuis le bundle (mode `--check` pour la CI)
 
 ### 0.3 Structure de dossiers
 - [x] `app/` (+ `__init__.py`) — code source de l'API
@@ -32,6 +33,7 @@ du modèle de scoring produits au **Projet 6** sur lesquels toute la mission s'a
 - [x] `monitoring/` — scripts/notebook de drift + dashboard
 - [x] `notebooks/` — analyses (drift, profiling)
 - [x] `models/` — artefacts du modèle
+- [x] `scripts/` — scripts utilitaires (génération/contrôle des artefacts dérivés du bundle)
 - [x] `docs/` — fiches d'étape
 - [x] `.github/workflows/` — pipeline CI/CD
 

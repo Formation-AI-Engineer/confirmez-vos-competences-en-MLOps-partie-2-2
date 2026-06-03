@@ -40,6 +40,7 @@ tests + build + déploiement via un pipeline CI/CD (GitHub Actions).
 ### 2.4 Pipeline CI/CD (GitHub Actions)
 - [ ] Workflow `.github/workflows/ci-cd.yml` déclenché sur push `main`
 - [ ] Job **test** : install deps + `pytest`
+- [ ] Étape **vérification des artefacts** : `python scripts/generate_model_artifacts.py --check` (échoue si `feature_names.json` / `model_meta.json` / `reference_sample.parquet` sont désynchronisés du bundle)
 - [ ] Job **build** : build de l'image Docker si les tests passent
 - [ ] Job **deploy** : push de l'image / déploiement sur l'environnement cible (simulé ou réel)
 - [ ] **Secrets** gérés via GitHub Secrets (jamais en clair)
