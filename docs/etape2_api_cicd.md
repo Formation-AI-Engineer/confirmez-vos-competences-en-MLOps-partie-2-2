@@ -13,41 +13,45 @@ tests + build + déploiement via un pipeline CI/CD (GitHub Actions).
 ## Tâches
 
 ### 2.1 API de prédiction (FastAPI recommandé)
-- [ ] Endpoint racine / health check (`GET /` ou `/health`)
-- [ ] Endpoint `POST /predict` : reçoit les données d'un client, retourne **probabilité + décision** (seuil 0.49)
-- [ ] **Charger le modèle une seule fois au démarrage** (événement `startup` / variable globale) — pas à chaque requête
-- [ ] Schéma d'entrée **Pydantic** (validation des champs, types, plages)
-- [ ] Gestion des features manquantes / alignement sur les **804 colonnes** attendues par le modèle
-- [ ] **Gestion des erreurs** (HTTP 422/400/500) + documentation Swagger (auto avec FastAPI)
+- [x] Endpoint racine / health check (`GET /` → redirige vers Swagger ; `GET /health`)
+- [x] Endpoint `POST /predict` : reçoit les données d'un client, retourne **probabilité + décision** (seuil 0.49)
+- [x] **Charger le modèle une seule fois au démarrage** (`lifespan` → `predictor.load_model`, singleton) — pas à chaque requête
+- [x] Schéma d'entrée **Pydantic** (`PredictionInput` : dict de features, ≥ 1 item, valeurs numériques)
+- [x] Gestion des features manquantes / alignement sur les **804 colonnes** (reindex → NaN gérés par LightGBM, clés inconnues ignorées)
+- [x] **Gestion des erreurs** : 422 (validation Pydantic), 500 (erreur d'inférence) + Swagger auto. Endpoint bonus `GET /model/info`
 - [ ] (Optionnel) interface **Gradio/Streamlit** de démonstration par-dessus l'API
 
 ### 2.2 Tests unitaires automatisés
-- [ ] Test du health check
-- [ ] Test d'une prédiction nominale (valeurs valides → score cohérent)
-- [ ] **Cas critiques** :
-  - [ ] champ obligatoire manquant
-  - [ ] valeur hors plage (ex. âge négatif, revenu = 0)
-  - [ ] mauvais type (texte là où un nombre est attendu)
-- [ ] Test que le modèle est chargé une seule fois (pas de rechargement par requête)
-- [ ] `pytest` vert en local
+- [x] Test du health check (`/health` + redirection `/`)
+- [x] Test d'une prédiction nominale (client 0 de la référence → proba 0.367 / accordé)
+- [x] **Cas critiques** :
+  - [x] champ obligatoire manquant (`features` absent + dict vide → 422)
+  - [N/A] valeur hors plage : non applicable — les 804 features sont déjà encodées et certaines sont légitimement négatives (`DAYS_BIRTH`…). Remplacé par : clés inconnues ignorées sans erreur
+  - [x] mauvais type (texte là où un nombre est attendu → 422)
+- [x] Test que le modèle est chargé une seule fois (singleton, monkeypatch sur `joblib.load`)
+- [x] `pytest` vert en local (**11 tests passés**)
 
 ### 2.3 Conteneurisation Docker
-- [ ] `Dockerfile` (image légère type `python:3.11-slim`, install deps, copie code + modèle, `uvicorn`)
-- [ ] `.dockerignore`
-- [ ] `docker build` + `docker run` testés en local (API répond sur le port exposé)
-- [ ] Vérifier l'empreinte mémoire / le temps de démarrage
+- [x] `Dockerfile` (`python:3.10-slim` + `libgomp1` pour LightGBM, install deps API-only, copie code + modèle, `uvicorn` port 7860)
+- [x] `.dockerignore` (déjà présent ; exclut venv, docs, notebooks, PDF, données…)
+- [x] `docker build` + `docker run` testés en local (`/health`, `/model/info`, `/predict` OK sur le port 7860)
+- [x] Empreinte maîtrisée : **image 637 Mo** (monitoring déplacé en extra), `HEALTHCHECK` sur `/health` → `healthy`
 
 ### 2.4 Pipeline CI/CD (GitHub Actions)
-- [ ] Workflow `.github/workflows/ci-cd.yml` déclenché sur push `main`
-- [ ] Job **test** : install deps + `pytest`
-- [ ] Job **build** : build de l'image Docker si les tests passent
-- [ ] Job **deploy** : push de l'image / déploiement sur l'environnement cible (simulé ou réel)
-- [ ] **Secrets** gérés via GitHub Secrets (jamais en clair)
+- [x] Workflow `.github/workflows/ci-cd.yml` (push `main`/`dev`/tags `v*`, PR vers `main`) ; install via `uv`
+- [x] Job **lint** : `ruff check` + `ruff format --check` (config `[tool.ruff]`, line-length 100)
+- [x] Job **test** : `uv sync --extra dev` + `pytest` (needs lint)
+- [x] Étape **vérification des artefacts** : `python scripts/generate_model_artifacts.py --check` (échoue si `feature_names.json` / `model_meta.json` / `reference_sample.parquet` sont désynchronisés du bundle)
+- [x] Job **build** : `docker build` de l'image si les tests passent (needs test)
+- [x] Job **deploy** : force-push du dépôt vers le Space Hugging Face (needs build, `main`/tags uniquement)
+- [x] **Secrets** via GitHub Secrets (`HF_TOKEN`, `HF_SPACE_ID`) — *à configurer à l'étape 2.5 pour activer le deploy*
 
 ### 2.5 Déploiement
-- [ ] Choisir la plateforme : **Hugging Face Spaces** (simple) / Google Cloud Run / Heroku
-- [ ] Déploiement automatisé depuis le pipeline
-- [ ] **URL publique** de l'API testée (curl/Postman) + Swagger accessible
+- [x] Plateforme choisie : **Hugging Face Spaces** (type Docker)
+- [x] Space créé : `lcamara/scoring-credit-pret-a-depenser` ; secret `HF_TOKEN` ajouté côté GitHub
+- [x] En-tête YAML HF dans le `README.md` (`sdk: docker`, `app_port: 7860`) + `HF_SPACE_ID` dans le workflow
+- [x] Déploiement automatisé depuis le pipeline (job `deploy` sur push `main`/tags)
+- [ ] **URL publique** de l'API testée (curl/Postman) + Swagger accessible — *après le 1er push sur `main`*
 
 ## Points de vigilance
 - **Charger le modèle une seule fois** : sinon lenteurs / échec sous charge (rappel fort de l'énoncé).

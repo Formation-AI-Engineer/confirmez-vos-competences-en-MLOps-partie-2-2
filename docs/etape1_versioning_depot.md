@@ -11,31 +11,31 @@ sur GitHub. C'est le socle qui rendra la CI/CD (étape 2) possible.
 ## Tâches
 
 ### 1.1 Initialisation du dépôt
-- [ ] `git init` à la racine de `Projet 8/`
-- [ ] Créer le dépôt distant sur GitHub (**public**)
-- [ ] `git remote add origin …`
+- [x] `git init` à la racine de `Projet 8/`
+- [x] Créer le dépôt distant sur GitHub (`Formation-AI-Engineer/confirmez-vos-competences-en-MLOps-partie-2-2`)
+- [x] `git remote add origin …`
 
 ### 1.2 Fichier `.gitignore`
-- [ ] Ignorer : `.venv/`, `__pycache__/`, `*.pyc`, `.pytest_cache/`
-- [ ] Ignorer les données sensibles / volumineuses : `data/`, `*.csv`, logs de prod
-- [ ] Ignorer les secrets : `.env` (committer un `.env.example`)
-- [ ] Décider du sort des artefacts `models/*.joblib` (Git LFS, ou exclus + script de téléchargement)
+- [x] Ignorer : `.venv/`, `__pycache__/`, `*.pyc`, `.pytest_cache/`
+- [x] Ignorer les données sensibles / volumineuses : `data/`, `*.csv`, logs de prod
+- [x] Ignorer les secrets : `.env` (committer un `.env.example`)
+- [x] Sort des artefacts `models/*.joblib` : **versionnés directement** dans Git (~2 Mo au total, sous les limites GitHub) → pas de LFS
 
 ### 1.3 Structure claire du projet
-- [ ] Vérifier l'arborescence : `app/`, `tests/`, `monitoring/`, `notebooks/`, `models/`, `docs/`, `.github/`
-- [ ] `README.md` initial (sera enrichi en étape 4)
-- [ ] Fichier de dépendances présent (`pyproject.toml` / `requirements.txt`)
+- [x] Vérifier l'arborescence : `app/`, `tests/`, `monitoring/`, `notebooks/`, `models/`, `scripts/`, `docs/`, `.github/`
+- [x] `README.md` initial (sera enrichi en étape 4)
+- [x] Fichier de dépendances présent (`pyproject.toml` + `uv.lock`)
 
 ### 1.4 Premiers commits
-- [ ] Commit initial : structure + docs + dépendances
-- [ ] Commits explicites au fil de l'eau (un commit = une intention claire)
-- [ ] Adopter une stratégie de branche si pertinent (ex. `main` + branches de feature)
-- [ ] `git push -u origin main`
+- [x] Commit initial : structure + docs + dépendances
+- [x] Commits explicites au fil de l'eau (un commit = une intention claire)
+- [x] Stratégie de branche : `main` + branche de travail `dev` (les deux poussées sur `origin`)
+- [x] `git push -u origin main`
 
 ### 1.5 Vérification
-- [ ] Le dépôt est bien **public** et accessible
-- [ ] Aucune donnée sensible / aucun secret n'est présent dans l'historique
-- [ ] Les commits racontent la construction du projet (= livrable « historique des versions »)
+- [x] Le dépôt est bien **public** et accessible
+- [x] Aucune donnée sensible / aucun secret n'est présent dans l'historique (scan `git log --all` OK ; seul `.env.example`)
+- [x] Les commits racontent la construction du projet (= livrable « historique des versions »)
 
 ## Points de vigilance
 - **Ne jamais committer** de données sensibles ni de secrets (vérifier l'historique, pas juste le dernier commit).
@@ -45,4 +45,4 @@ sur GitHub. C'est le socle qui rendra la CI/CD (étape 2) possible.
 ## Outils & ressources
 - Git, GitHub. Git LFS (si artefacts versionnés). Documentation Git, Quickstart GitHub.
 
-## Statut : À FAIRE
+## Statut : TERMINÉ
