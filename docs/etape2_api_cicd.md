@@ -13,12 +13,12 @@ tests + build + déploiement via un pipeline CI/CD (GitHub Actions).
 ## Tâches
 
 ### 2.1 API de prédiction (FastAPI recommandé)
-- [ ] Endpoint racine / health check (`GET /` ou `/health`)
-- [ ] Endpoint `POST /predict` : reçoit les données d'un client, retourne **probabilité + décision** (seuil 0.49)
-- [ ] **Charger le modèle une seule fois au démarrage** (événement `startup` / variable globale) — pas à chaque requête
-- [ ] Schéma d'entrée **Pydantic** (validation des champs, types, plages)
-- [ ] Gestion des features manquantes / alignement sur les **804 colonnes** attendues par le modèle
-- [ ] **Gestion des erreurs** (HTTP 422/400/500) + documentation Swagger (auto avec FastAPI)
+- [x] Endpoint racine / health check (`GET /` → redirige vers Swagger ; `GET /health`)
+- [x] Endpoint `POST /predict` : reçoit les données d'un client, retourne **probabilité + décision** (seuil 0.49)
+- [x] **Charger le modèle une seule fois au démarrage** (`lifespan` → `predictor.load_model`, singleton) — pas à chaque requête
+- [x] Schéma d'entrée **Pydantic** (`PredictionInput` : dict de features, ≥ 1 item, valeurs numériques)
+- [x] Gestion des features manquantes / alignement sur les **804 colonnes** (reindex → NaN gérés par LightGBM, clés inconnues ignorées)
+- [x] **Gestion des erreurs** : 422 (validation Pydantic), 500 (erreur d'inférence) + Swagger auto. Endpoint bonus `GET /model/info`
 - [ ] (Optionnel) interface **Gradio/Streamlit** de démonstration par-dessus l'API
 
 ### 2.2 Tests unitaires automatisés
