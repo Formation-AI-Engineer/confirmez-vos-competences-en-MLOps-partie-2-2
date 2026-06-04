@@ -1,9 +1,10 @@
 """Interface de démonstration Gradio — montée par-dessus l'API FastAPI.
 
-Petit frontend interactif pour la tâche 2.1 (optionnel) : saisir/charger les
-features d'un client puis obtenir la **probabilité de défaut** et la **décision
-métier**. Tourne dans le même process que l'API (appel direct de ``predictor``,
-pas d'aller-retour HTTP) et est exposé sous ``/demo`` du Space Docker.
+Frontend interactif pour la tâche 2.1 (optionnel) : saisir un client (formulaire
+reprenant les features de l'exemple Swagger, ou chargement d'un client réel
+d'exemple, ou JSON avancé pour atteindre n'importe quelle feature) puis obtenir la
+**probabilité de défaut** et la **décision métier**. Tourne dans le même process
+que l'API (appel direct de ``predictor``, pas d'aller-retour HTTP), sous ``/demo``.
 """
 
 import json
@@ -14,6 +15,19 @@ import gradio as gr
 from app import config, predictor
 
 _EXAMPLES_PATH = Path(__file__).resolve().parent / "demo_examples.json"
+_NEW_CLIENT = "➕ Nouveau client (saisie libre)"
+
+# Champs du formulaire = features de l'exemple Swagger (mêmes noms, valeurs brutes).
+# Les DAYS_* sont en jours négatifs, comme attendu par le modèle.
+_FORM_FIELDS = [
+    ("AMT_INCOME_TOTAL", "Revenu annuel total", 180000.0),
+    ("AMT_CREDIT", "Montant du crédit", 500000.0),
+    ("AMT_ANNUITY", "Annuité", 25000.0),
+    ("DAYS_BIRTH", "Âge en jours (négatif, ex. -12000 ≈ 33 ans)", -12000.0),
+    ("DAYS_EMPLOYED", "Ancienneté emploi en jours (négatif, ex. -2000)", -2000.0),
+]
+_FORM_KEYS = [key for key, _, _ in _FORM_FIELDS]
+_DEFAULTS = [default for _, _, default in _FORM_FIELDS]
 
 
 def _load_examples() -> dict[str, dict]:
@@ -23,47 +37,58 @@ def _load_examples() -> dict[str, dict]:
     return {}
 
 
-def _fill_example(label: str, examples: dict[str, dict]) -> str:
-    """Renvoie le JSON (indenté) des features du client d'exemple sélectionné."""
-    feats = examples.get(label, {})
-    return json.dumps(feats, ensure_ascii=False, indent=2)
+def _fill_form(label: str, examples: dict[str, dict]) -> tuple:
+    """Renvoie l'état de base + les valeurs des champs pour la sélection.
 
-
-def _predict_from_json(features_json: str) -> tuple[dict, str]:
-    """Parse le JSON saisi, appelle le modèle et formate le résultat.
-
-    Returns un couple (objet pour ``gr.Label``, markdown récapitulatif). Les
-    erreurs (JSON invalide, type non numérique) sont renvoyées proprement à l'UI.
+    - « Nouveau client » → base vide + valeurs par défaut (exemple Swagger).
+    - Client d'exemple → features complètes en base + champs pré-remplis.
     """
-    try:
-        features = json.loads(features_json)
-    except json.JSONDecodeError as exc:
-        raise gr.Error(f"JSON invalide : {exc}") from exc
+    if label == _NEW_CLIENT or label not in examples:
+        return ({}, *_DEFAULTS, "")
+    feats = examples[label]
+    return (feats, *(feats.get(k) for k in _FORM_KEYS), "")
 
-    if not isinstance(features, dict) or not features:
-        raise gr.Error("Fournir un objet JSON non vide {nom_feature: valeur}.")
 
-    try:
-        features = {k: float(v) for k, v in features.items()}
-    except (TypeError, ValueError) as exc:
-        raise gr.Error(f"Toutes les valeurs doivent être numériques : {exc}") from exc
+def _predict(base: dict | None, *form_and_json) -> tuple[dict, str]:
+    """Assemble les features (base + formulaire + JSON avancé), prédit et formate.
 
-    result = predictor.predict(features)
+    Précédence : client de base (exemple) < champs du formulaire < JSON avancé.
+    """
+    *form_values, advanced_json = form_and_json
+    feats: dict[str, float] = dict(base or {})
+
+    # Champs du formulaire (ignorés si laissés vides).
+    feats.update(
+        {k: float(v) for k, v in zip(_FORM_KEYS, form_values, strict=True) if v is not None}
+    )
+
+    # JSON avancé optionnel (override final) pour atteindre n'importe quelle feature.
+    if advanced_json and advanced_json.strip():
+        try:
+            extra = json.loads(advanced_json)
+        except json.JSONDecodeError as exc:
+            raise gr.Error(f"JSON avancé invalide : {exc}") from exc
+        if not isinstance(extra, dict):
+            raise gr.Error("Le JSON avancé doit être un objet {feature: valeur}.")
+        try:
+            feats.update({k: float(v) for k, v in extra.items()})
+        except (TypeError, ValueError) as exc:
+            raise gr.Error(f"JSON avancé : valeurs non numériques ({exc}).") from exc
+
+    if not feats:
+        raise gr.Error("Renseigner au moins une feature.")
+
+    result = predictor.predict(feats)
     proba = result["probability"]
     decision = result["decision"]
 
-    # gr.Label attend {classe: confiance} : on montre les deux décisions possibles.
-    label_obj = {
-        "refusé": proba,
-        "accordé": round(1.0 - proba, 4),
-    }
+    label_obj = {"refusé": proba, "accordé": round(1.0 - proba, 4)}
     recap = (
         f"**Décision : {decision.upper()}**\n\n"
         f"- Probabilité de défaut : **{proba:.1%}**\n"
-        f"- Seuil de refus : **{result['threshold']:.0%}** "
-        f"(refus si proba ≥ seuil)\n"
-        f"- Features reconnues : **{result['n_features_received']} / "
-        f"{result['n_features_expected']}** (les manquantes → NaN)"
+        f"- Seuil de refus : **{result['threshold']:.0%}** (refus si proba ≥ seuil)\n"
+        f"- Features fournies au modèle : **{result['n_features_received']} / "
+        f"{result['n_features_expected']}** (les manquantes → NaN, gérées par LightGBM)"
     )
     return label_obj, recap
 
@@ -71,55 +96,55 @@ def _predict_from_json(features_json: str) -> tuple[dict, str]:
 def build_demo() -> gr.Blocks:
     """Construit l'interface Gradio (Blocks) de démonstration de l'API."""
     examples = _load_examples()
-    example_labels = list(examples.keys())
-    default_json = (
-        _fill_example(example_labels[0], examples)
-        if example_labels
-        else json.dumps(
-            {"AMT_CREDIT": 500000, "AMT_INCOME_TOTAL": 180000, "DAYS_BIRTH": -12000},
-            ensure_ascii=False,
-            indent=2,
-        )
-    )
+    choices = [_NEW_CLIENT, *examples.keys()]
+    init_label = next(iter(examples), _NEW_CLIENT)
+    init = _fill_form(init_label, examples)
 
     with gr.Blocks(title="Démo — Scoring crédit Prêt à Dépenser") as demo:
         gr.Markdown(
             "# 💳 Démo — Scoring crédit *Prêt à Dépenser*\n"
-            "Frontend de démonstration de l'API de scoring "
-            f"(modèle LightGBM, **{predictor.get_model_info()['n_features']} features**, "
-            f"seuil métier **{config.DECISION_THRESHOLD:.0%}**). "
-            "La classe positive est le **défaut de paiement** : proba ≥ seuil → **refus**.\n\n"
+            "Saisissez un client (ou chargez un profil réel d'exemple) pour obtenir la "
+            f"probabilité de défaut et la décision. Modèle LightGBM "
+            f"(**{predictor.get_model_info()['n_features']} features**), "
+            f"seuil métier **{config.DECISION_THRESHOLD:.0%}** — proba ≥ seuil → **refus**.\n\n"
+            "Le formulaire reprend les features de l'exemple Swagger ; les ~799 autres "
+            "restent NaN (gérées par LightGBM) ou se renseignent via *Avancé*.\n\n"
             "👉 API & documentation Swagger : [`/docs`](/docs)."
         )
 
+        base_state = gr.State(init[0])
+
         with gr.Row():
             with gr.Column(scale=1):
-                if example_labels:
-                    example_dd = gr.Dropdown(
-                        choices=example_labels,
-                        value=example_labels[0],
-                        label="Charger un client d'exemple",
-                        info="Profils réels issus de l'échantillon de référence.",
-                    )
-                features_in = gr.Code(
-                    value=default_json,
-                    language="json",
-                    label="Features du client (JSON éditable)",
+                selector = gr.Dropdown(
+                    choices=choices,
+                    value=init_label,
+                    label="Client",
+                    info="« Nouveau client » pour une saisie libre, ou un profil réel d'exemple.",
                 )
+                numbers = [
+                    gr.Number(value=val, label=lbl)
+                    for (_, lbl, _), val in zip(_FORM_FIELDS, init[1:-1], strict=True)
+                ]
+                with gr.Accordion("Avancé — autres features (JSON)", open=False):
+                    advanced = gr.Code(
+                        value="",
+                        language="json",
+                        label='Override JSON, ex. {"EXT_SOURCE_2": 0.5}',
+                    )
                 predict_btn = gr.Button("Prédire", variant="primary")
             with gr.Column(scale=1):
                 decision_out = gr.Label(label="Décision (confiance par classe)")
-                recap_out = gr.Markdown(label="Détail")
+                recap_out = gr.Markdown()
 
-        if example_labels:
-            example_dd.change(
-                fn=lambda label: _fill_example(label, examples),
-                inputs=example_dd,
-                outputs=features_in,
-            )
+        selector.change(
+            fn=lambda label: _fill_form(label, examples),
+            inputs=selector,
+            outputs=[base_state, *numbers, advanced],
+        )
         predict_btn.click(
-            fn=_predict_from_json,
-            inputs=features_in,
+            fn=_predict,
+            inputs=[base_state, *numbers, advanced],
             outputs=[decision_out, recap_out],
         )
 
