@@ -8,10 +8,12 @@ Expose le modèle LightGBM (804 features, seuil métier 0.49) du Projet 6 :
 
 from contextlib import asynccontextmanager
 
+import gradio as gr
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
 
 from app import predictor
+from app.demo import build_demo
 from app.schemas import ModelInfo, PredictionInput, PredictionOutput
 
 
@@ -71,3 +73,7 @@ def predict(payload: PredictionInput) -> PredictionOutput:
 def model_info() -> ModelInfo:
     """Retourne les métadonnées du modèle déployé."""
     return ModelInfo(**predictor.get_model_info())
+
+
+# Interface de démonstration Gradio, montée sous /demo (même process que l'API).
+app = gr.mount_gradio_app(app, build_demo(), path="/demo")

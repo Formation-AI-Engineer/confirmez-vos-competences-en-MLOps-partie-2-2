@@ -19,7 +19,7 @@ tests + build + déploiement via un pipeline CI/CD (GitHub Actions).
 - [x] Schéma d'entrée **Pydantic** (`PredictionInput` : dict de features, ≥ 1 item, valeurs numériques)
 - [x] Gestion des features manquantes / alignement sur les **804 colonnes** (reindex → NaN gérés par LightGBM, clés inconnues ignorées)
 - [x] **Gestion des erreurs** : 422 (validation Pydantic), 500 (erreur d'inférence) + Swagger auto. Endpoint bonus `GET /model/info`
-- [ ] (Optionnel) interface **Gradio/Streamlit** de démonstration par-dessus l'API
+- [x] (Optionnel) interface **Gradio** de démonstration montée dans FastAPI (`gr.mount_gradio_app` → `GET /demo`) : chargement de clients réels d'exemple, JSON éditable, proba + décision affichées (`app/demo.py`)
 
 ### 2.2 Tests unitaires automatisés
 - [x] Test du health check (`/health` + redirection `/`)
@@ -29,13 +29,14 @@ tests + build + déploiement via un pipeline CI/CD (GitHub Actions).
   - [N/A] valeur hors plage : non applicable — les 804 features sont déjà encodées et certaines sont légitimement négatives (`DAYS_BIRTH`…). Remplacé par : clés inconnues ignorées sans erreur
   - [x] mauvais type (texte là où un nombre est attendu → 422)
 - [x] Test que le modèle est chargé une seule fois (singleton, monkeypatch sur `joblib.load`)
-- [x] `pytest` vert en local (**11 tests passés**)
+- [x] Tests de l'**interface de démo** (`/demo` monté, prédiction depuis JSON, JSON invalide géré, exemples embarqués)
+- [x] `pytest` vert en local (**15 tests passés**)
 
 ### 2.3 Conteneurisation Docker
 - [x] `Dockerfile` (`python:3.10-slim` + `libgomp1` pour LightGBM, install deps API-only, copie code + modèle, `uvicorn` port 7860)
 - [x] `.dockerignore` (déjà présent ; exclut venv, docs, notebooks, PDF, données…)
 - [x] `docker build` + `docker run` testés en local (`/health`, `/model/info`, `/predict` OK sur le port 7860)
-- [x] Empreinte maîtrisée : **image 637 Mo** (monitoring déplacé en extra), `HEALTHCHECK` sur `/health` → `healthy`
+- [x] Empreinte maîtrisée : **image 739 Mo** (monitoring déplacé en extra ; +~100 Mo pour Gradio/démo), `HEALTHCHECK` sur `/health` → `healthy`
 
 ### 2.4 Pipeline CI/CD (GitHub Actions)
 - [x] Workflow `.github/workflows/ci-cd.yml` (push `main`/`dev`/tags `v*`, PR vers `main`) ; install via `uv`
@@ -51,7 +52,8 @@ tests + build + déploiement via un pipeline CI/CD (GitHub Actions).
 - [x] Space créé : `lcamara/scoring-credit-pret-a-depenser` ; secret `HF_TOKEN` ajouté côté GitHub
 - [x] En-tête YAML HF dans le `README.md` (`sdk: docker`, `app_port: 7860`) + `HF_SPACE_ID` dans le workflow
 - [x] Déploiement automatisé depuis le pipeline (job `deploy` sur push `main`/tags)
-- [ ] **URL publique** de l'API testée (curl/Postman) + Swagger accessible — *après le 1er push sur `main`*
+- [x] **URL publique** de l'API testée (curl) + Swagger accessible : <https://lcamara-scoring-credit-pret-a-depenser.hf.space> — `/health` ✔, `/docs` (Swagger) ✔, `/model/info` ✔, `/predict` ✔
+  - [ ] interface de démo `/demo` (2.1) **live** : codée + testée en local, à déployer (commit du code Gradio puis push `main`)
 
 ## Points de vigilance
 - **Charger le modèle une seule fois** : sinon lenteurs / échec sous charge (rappel fort de l'énoncé).
@@ -64,4 +66,4 @@ tests + build + déploiement via un pipeline CI/CD (GitHub Actions).
 - FastAPI / Gradio, Docker, Postman/curl, GitHub Actions, Pytest.
 - Plateformes : Hugging Face Spaces, Cloud Run, Heroku.
 
-## Statut : À FAIRE
+## Statut : TERMINÉ (API en prod sur HF Spaces ; démo `/demo` codée — live au prochain push `main`)
