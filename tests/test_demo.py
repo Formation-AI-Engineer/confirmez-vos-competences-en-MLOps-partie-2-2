@@ -1,11 +1,9 @@
 """Tests de l'interface de démo Gradio montée sous /demo."""
 
-import json
-
 import gradio as gr
 import pytest
 
-from app.demo import _load_examples, _predict_from_json
+from app.demo import _DEFAULTS, _load_examples, _predict
 
 
 def test_demo_mounted(client):
@@ -14,19 +12,39 @@ def test_demo_mounted(client):
     assert r.status_code == 200
 
 
-def test_demo_predict_from_json(client):
-    """Une prédiction depuis le JEU JSON renvoie un label et un récap cohérents."""
-    features = json.dumps({"AMT_CREDIT": 500000, "AMT_INCOME_TOTAL": 180000})
-    label, recap = _predict_from_json(features)
+def test_demo_predict_from_form(client):
+    """Une prédiction depuis le formulaire (5 features de l'exemple Swagger) est cohérente."""
+    label, recap = _predict({}, *_DEFAULTS, "")
     assert set(label) == {"accordé", "refusé"}
     assert abs(label["accordé"] + label["refusé"] - 1.0) < 1e-6
     assert "Décision" in recap
+    assert "5 / 804" in recap  # les 5 champs du formulaire sont fournis
 
 
-def test_demo_invalid_json_raises(client):
-    """Un JSON invalide lève une gr.Error (message propre côté UI)."""
+def test_demo_advanced_json_override(client):
+    """Le JSON avancé est fusionné par-dessus les champs du formulaire."""
+    label, recap = _predict(
+        {},
+        None,
+        None,
+        None,
+        None,
+        None,
+        '{"AMT_CREDIT": 500000, "AMT_INCOME_TOTAL": 180000}',
+    )
+    assert "2 / 804" in recap  # seules les 2 features du JSON sont fournies
+
+
+def test_demo_invalid_advanced_json_raises(client):
+    """Un JSON avancé invalide lève une gr.Error (message propre côté UI)."""
     with pytest.raises(gr.Error):
-        _predict_from_json("{pas du json}")
+        _predict({}, None, None, None, None, None, "{pas du json}")
+
+
+def test_demo_empty_input_raises(client):
+    """Aucune feature renseignée → gr.Error."""
+    with pytest.raises(gr.Error):
+        _predict({}, None, None, None, None, None, "")
 
 
 def test_demo_examples_present():

@@ -19,7 +19,7 @@ tests + build + déploiement via un pipeline CI/CD (GitHub Actions).
 - [x] Schéma d'entrée **Pydantic** (`PredictionInput` : dict de features, ≥ 1 item, valeurs numériques)
 - [x] Gestion des features manquantes / alignement sur les **804 colonnes** (reindex → NaN gérés par LightGBM, clés inconnues ignorées)
 - [x] **Gestion des erreurs** : 422 (validation Pydantic), 500 (erreur d'inférence) + Swagger auto. Endpoint bonus `GET /model/info`
-- [x] (Optionnel) interface **Gradio** de démonstration montée dans FastAPI (`gr.mount_gradio_app` → `GET /demo`) : chargement de clients réels d'exemple, JSON éditable, proba + décision affichées (`app/demo.py`)
+- [x] (Optionnel) interface **Gradio** de démonstration montée dans FastAPI (`gr.mount_gradio_app` → `GET /demo`) : **formulaire des 5 features de l'exemple Swagger** (revenu, crédit, annuité, `DAYS_BIRTH`, `DAYS_EMPLOYED`) + chargement de clients réels d'exemple + accordéon JSON avancé pour les autres features ; proba + décision affichées (`app/demo.py`)
 
 ### 2.2 Tests unitaires automatisés
 - [x] Test du health check (`/health` + redirection `/`)
@@ -30,7 +30,7 @@ tests + build + déploiement via un pipeline CI/CD (GitHub Actions).
   - [x] mauvais type (texte là où un nombre est attendu → 422)
 - [x] Test que le modèle est chargé une seule fois (singleton, monkeypatch sur `joblib.load`)
 - [x] Tests de l'**interface de démo** (`/demo` monté, prédiction depuis JSON, JSON invalide géré, exemples embarqués)
-- [x] `pytest` vert en local (**15 tests passés**)
+- [x] `pytest` vert en local (**17 tests passés**)
 
 ### 2.3 Conteneurisation Docker
 - [x] `Dockerfile` (`python:3.10-slim` + `libgomp1` pour LightGBM, install deps API-only, copie code + modèle, `uvicorn` port 7860)
@@ -53,7 +53,7 @@ tests + build + déploiement via un pipeline CI/CD (GitHub Actions).
 - [x] En-tête YAML HF dans le `README.md` (`sdk: docker`, `app_port: 7860`) + `HF_SPACE_ID` dans le workflow
 - [x] Déploiement automatisé depuis le pipeline (job `deploy` sur push `main`/tags)
 - [x] **URL publique** de l'API testée (curl) + Swagger accessible : <https://lcamara-scoring-credit-pret-a-depenser.hf.space> — `/health` ✔, `/docs` (Swagger) ✔, `/model/info` ✔, `/predict` ✔
-  - [ ] interface de démo `/demo` (2.1) **live** : codée + testée en local, à déployer (commit du code Gradio puis push `main`)
+  - [x] interface de démo `/demo` (2.1) **live** en prod (HTTP 200) après déploiement via le pipeline sur `main`
 
 ## Points de vigilance
 - **Charger le modèle une seule fois** : sinon lenteurs / échec sous charge (rappel fort de l'énoncé).
@@ -66,4 +66,4 @@ tests + build + déploiement via un pipeline CI/CD (GitHub Actions).
 - FastAPI / Gradio, Docker, Postman/curl, GitHub Actions, Pytest.
 - Plateformes : Hugging Face Spaces, Cloud Run, Heroku.
 
-## Statut : TERMINÉ (API en prod sur HF Spaces ; démo `/demo` codée — live au prochain push `main`)
+## Statut : TERMINÉ (API + démo `/demo` en prod sur HF Spaces via le pipeline CI/CD)

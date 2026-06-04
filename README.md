@@ -139,7 +139,7 @@ curl http://localhost:8000/model/info
 
 ## Tests
 
-**15 tests** couvrent le health check, une prédiction nominale, les cas critiques (champ manquant, mauvais type → `422`), le chargement unique du modèle et l'interface de démo (`/demo`) :
+**17 tests** couvrent le health check, une prédiction nominale, les cas critiques (champ manquant, mauvais type → `422`), le chargement unique du modèle et l'interface de démo (`/demo`) :
 
 ```bash
 uv run pytest
