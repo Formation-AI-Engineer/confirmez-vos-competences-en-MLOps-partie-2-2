@@ -20,6 +20,7 @@ Mise en production du modèle de scoring crédit développé au Projet 6 (« Ini
 
 - **Space Hugging Face** : <https://huggingface.co/spaces/lcamara/scoring-credit-pret-a-depenser>
 - **Swagger UI** : <https://lcamara-scoring-credit-pret-a-depenser.hf.space/docs>
+- **Interface de démo (Gradio)** : <https://lcamara-scoring-credit-pret-a-depenser.hf.space/demo>
 
 ## Sommaire
 
@@ -87,7 +88,7 @@ cp .env.example .env
 uv run uvicorn app.main:app --reload
 ```
 
-Le modèle est chargé **une seule fois** au démarrage (singleton en mémoire). Documentation interactive (Swagger UI) : <http://localhost:8000/docs>
+Le modèle est chargé **une seule fois** au démarrage (singleton en mémoire). Documentation interactive (Swagger UI) : <http://localhost:8000/docs>. Interface de démo Gradio : <http://localhost:8000/demo>.
 
 ### Avec Docker
 
@@ -138,7 +139,7 @@ curl http://localhost:8000/model/info
 
 ## Tests
 
-**11 tests** couvrent le health check, une prédiction nominale, les cas critiques (champ manquant, mauvais type → `422`) et le chargement unique du modèle :
+**15 tests** couvrent le health check, une prédiction nominale, les cas critiques (champ manquant, mauvais type → `422`), le chargement unique du modèle et l'interface de démo (`/demo`) :
 
 ```bash
 uv run pytest
@@ -163,7 +164,7 @@ Le job `deploy` envoie les fichiers nécessaires (Dockerfile, `app/`, `models/`,
 ## Structure du projet
 
 ```
-app/         API FastAPI (config, schemas, predictor, main)
+app/         API FastAPI (config, schemas, predictor, main) + démo Gradio (demo)
 tests/       tests unitaires (pytest)
 scripts/     génération/contrôle des artefacts dérivés du bundle
 models/      artefacts du modèle (issus du Projet 6)
