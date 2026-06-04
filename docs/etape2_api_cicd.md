@@ -19,7 +19,7 @@ tests + build + déploiement via un pipeline CI/CD (GitHub Actions).
 - [x] Schéma d'entrée **Pydantic** (`PredictionInput` : dict de features, ≥ 1 item, valeurs numériques)
 - [x] Gestion des features manquantes / alignement sur les **804 colonnes** (reindex → NaN gérés par LightGBM, clés inconnues ignorées)
 - [x] **Gestion des erreurs** : 422 (validation Pydantic), 500 (erreur d'inférence) + Swagger auto. Endpoint bonus `GET /model/info`
-- [x] (Optionnel) interface **Gradio** de démonstration montée dans FastAPI (`gr.mount_gradio_app` → `GET /demo`) : **formulaire des 5 features de l'exemple Swagger** (revenu, crédit, annuité, `DAYS_BIRTH`, `DAYS_EMPLOYED`) + chargement de clients réels d'exemple + accordéon JSON avancé pour les autres features ; proba + décision affichées (`app/demo.py`)
+- [x] (Optionnel) interface **Gradio** de démonstration montée dans FastAPI (`gr.mount_gradio_app` → `GET /demo`) : **formulaire des features les plus déterminantes** (`EXT_SOURCE_1/2/3` en sliders, montants, `DAYS_*`) + chargement de clients réels d'exemple + accordéon JSON avancé ; proba + décision affichées. Feature dérivée `CREDIT_TERM` (= annuité / crédit) recalculée côté `predictor`, partagée par l'API et la démo pour des réponses cohérentes (`app/demo.py`, `app/predictor.py`)
 
 ### 2.2 Tests unitaires automatisés
 - [x] Test du health check (`/health` + redirection `/`)
@@ -30,7 +30,7 @@ tests + build + déploiement via un pipeline CI/CD (GitHub Actions).
   - [x] mauvais type (texte là où un nombre est attendu → 422)
 - [x] Test que le modèle est chargé une seule fois (singleton, monkeypatch sur `joblib.load`)
 - [x] Tests de l'**interface de démo** (`/demo` monté, prédiction depuis JSON, JSON invalide géré, exemples embarqués)
-- [x] `pytest` vert en local (**17 tests passés**)
+- [x] `pytest` vert en local (**19 tests passés**)
 
 ### 2.3 Conteneurisation Docker
 - [x] `Dockerfile` (`python:3.10-slim` + `libgomp1` pour LightGBM, install deps API-only, copie code + modèle, `uvicorn` port 7860)

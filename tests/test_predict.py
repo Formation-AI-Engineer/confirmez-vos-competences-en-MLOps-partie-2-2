@@ -29,6 +29,14 @@ def test_predict_subset_of_features(client):
     assert r.json()["n_features_received"] == 2
 
 
+def test_predict_derives_credit_term(client):
+    """CREDIT_TERM (feature n°1) est recalculée depuis annuité + crédit."""
+    r = client.post("/predict", json={"features": {"AMT_CREDIT": 500000, "AMT_ANNUITY": 25000}})
+    assert r.status_code == 200
+    # AMT_CREDIT + AMT_ANNUITY + CREDIT_TERM dérivée = 3 features reconnues.
+    assert r.json()["n_features_received"] == 3
+
+
 def test_predict_unknown_keys_ignored(client):
     """Les clés inconnues sont ignorées, pas une erreur."""
     r = client.post(

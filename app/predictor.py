@@ -37,6 +37,20 @@ def get_feature_names() -> list[str]:
     return _feature_names
 
 
+def _add_derived_features(features: dict) -> dict:
+    """Calcule les features dérivées du Projet 6 à partir des valeurs brutes.
+
+    Aujourd'hui : ``CREDIT_TERM`` = annuité / crédit — la feature la plus
+    importante du modèle. Cela rend la saisie de montants bruts (API ou démo)
+    cohérente avec l'entraînement. Une valeur fournie explicitement n'est pas
+    écrasée.
+    """
+    f = dict(features)
+    if "CREDIT_TERM" not in f and f.get("AMT_CREDIT") and f.get("AMT_ANNUITY") is not None:
+        f["CREDIT_TERM"] = f["AMT_ANNUITY"] / f["AMT_CREDIT"]
+    return f
+
+
 def predict(features: dict) -> dict:
     """Prédit le risque de défaut pour un client.
 
@@ -45,6 +59,7 @@ def predict(features: dict) -> dict:
     """
     model = load_model()
     names = _feature_names
+    features = _add_derived_features(features)
 
     # Alignement sur les 804 features attendues : manquantes -> NaN, inconnues ignorées.
     row = pd.DataFrame([features]).reindex(columns=names).astype("float64")

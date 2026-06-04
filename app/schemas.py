@@ -18,13 +18,19 @@ class PredictionInput(BaseModel):
         min_length=1,
         description=(
             "Dictionnaire {nom_feature: valeur} parmi les 804 features du modèle. "
-            "Sous-ensemble accepté ; les manquantes sont traitées comme NaN."
+            "Sous-ensemble accepté ; les manquantes sont traitées comme NaN. "
+            "Les features les plus déterminantes sont les scores externes "
+            "`EXT_SOURCE_1/2/3` (0–1, ↑ = moins risqué) et `CREDIT_TERM` "
+            "(= annuité / crédit, recalculée automatiquement si absente)."
         ),
         examples=[
             {
+                "EXT_SOURCE_1": 0.5,
+                "EXT_SOURCE_2": 0.5,
+                "EXT_SOURCE_3": 0.5,
                 "AMT_CREDIT": 500000.0,
-                "AMT_INCOME_TOTAL": 180000.0,
                 "AMT_ANNUITY": 25000.0,
+                "AMT_INCOME_TOTAL": 180000.0,
                 "DAYS_BIRTH": -12000.0,
                 "DAYS_EMPLOYED": -2000.0,
             }
