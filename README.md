@@ -110,25 +110,29 @@ curl http://localhost:8000/health
 # {"status":"ok"}
 ```
 
-**Prédiction** (`POST /predict`) — un sous-ensemble des 804 features suffit, les manquantes sont traitées comme NaN (gérées nativement par LightGBM) :
+**Prédiction** (`POST /predict`) — un sous-ensemble des 804 features suffit, les manquantes sont traitées comme NaN (gérées nativement par LightGBM). Les features les plus déterminantes sont les scores externes `EXT_SOURCE_1/2/3` (0–1, ↑ = moins risqué) et `CREDIT_TERM` (= annuité / crédit, **recalculée automatiquement** si absente) :
 
 ```bash
 curl -X POST http://localhost:8000/predict \
   -H "Content-Type: application/json" \
-  -d '{"features": {"AMT_CREDIT": 500000, "AMT_INCOME_TOTAL": 180000, "DAYS_BIRTH": -12000}}'
+  -d '{"features": {"EXT_SOURCE_1": 0.5, "EXT_SOURCE_2": 0.5, "EXT_SOURCE_3": 0.5,
+                    "AMT_CREDIT": 500000, "AMT_ANNUITY": 25000, "AMT_INCOME_TOTAL": 180000,
+                    "DAYS_BIRTH": -12000, "DAYS_EMPLOYED": -2000}}'
 ```
 
-Réponse :
+Réponse (avec `EXT_SOURCE_* = 0.5`) :
 
 ```json
 {
-  "probability": 0.3328,
+  "probability": 0.3288,
   "decision": "accordé",
   "threshold": 0.49,
-  "n_features_received": 3,
+  "n_features_received": 9,
   "n_features_expected": 804
 }
 ```
+
+> Abaisser les scores externes à `0.15` fait passer la probabilité à **0.78 → refusé** : la décision réagit bien aux features déterminantes.
 
 **Métadonnées du modèle** (`GET /model/info`)
 
@@ -139,7 +143,7 @@ curl http://localhost:8000/model/info
 
 ## Tests
 
-**17 tests** couvrent le health check, une prédiction nominale, les cas critiques (champ manquant, mauvais type → `422`), le chargement unique du modèle et l'interface de démo (`/demo`) :
+**19 tests** couvrent le health check, une prédiction nominale, les cas critiques (champ manquant, mauvais type → `422`), la feature dérivée `CREDIT_TERM`, le chargement unique du modèle et l'interface de démo (`/demo`) :
 
 ```bash
 uv run pytest
