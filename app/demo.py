@@ -2,10 +2,10 @@
 
 Frontend interactif pour la tâche 2.1 (optionnel) : saisir un client via un
 formulaire des features **les plus déterminantes** du modèle (scores externes
-`EXT_SOURCE_*`, montants…), charger un client réel d'exemple, ou passer par le
-JSON avancé pour atteindre n'importe quelle feature ; puis obtenir la
-**probabilité de défaut** et la **décision métier**. Tourne dans le même process
-que l'API (appel direct de ``predictor``, pas d'aller-retour HTTP), sous ``/demo``.
+`EXT_SOURCE_*`, montants, âge/ancienneté en années), charger un client réel
+d'exemple, ou passer par le JSON avancé pour atteindre n'importe quelle feature ;
+puis obtenir la **probabilité de défaut** et la **décision métier**. Tourne dans
+le même process que l'API (appel direct de ``predictor``), sous ``/demo``.
 """
 
 import json
@@ -17,24 +17,37 @@ from app import config, predictor
 
 _EXAMPLES_PATH = Path(__file__).resolve().parent / "demo_examples.json"
 _NEW_CLIENT = "➕ Nouveau client (saisie libre)"
+_DAYS_PER_YEAR = 365.25
 
 # Champs du formulaire = features les plus influentes du modèle (cf. importances).
-# Les EXT_SOURCE_* sont des scores externes 0–1 (↑ = moins risqué), exposés en
-# slider ; les montants/jours en saisie numérique (DAYS_* en jours négatifs).
-# (key, label, valeur par défaut, type de widget)
+# Types de widget : "slider" (EXT_SOURCE 0–1, ↑ = moins risqué), "number" (montants),
+# "years" (saisi en années par l'utilisateur → converti en jours négatifs DAYS_*).
+# (clé modèle, label, valeur par défaut affichée, type)
 _FORM_FIELDS = [
     ("EXT_SOURCE_1", "Score externe 1 (0–1, ↑ = moins risqué)", 0.5, "slider"),
     ("EXT_SOURCE_2", "Score externe 2 (0–1, ↑ = moins risqué)", 0.5, "slider"),
     ("EXT_SOURCE_3", "Score externe 3 (0–1, ↑ = moins risqué)", 0.5, "slider"),
-    ("AMT_CREDIT", "Montant du crédit", 500000.0, "number"),
-    ("AMT_ANNUITY", "Annuité (→ CREDIT_TERM = annuité / crédit)", 25000.0, "number"),
-    ("AMT_INCOME_TOTAL", "Revenu annuel total", 180000.0, "number"),
-    ("DAYS_BIRTH", "Âge en jours (négatif, ex. -12000 ≈ 33 ans)", -12000.0, "number"),
-    ("DAYS_EMPLOYED", "Ancienneté emploi en jours (négatif, ex. -2000)", -2000.0, "number"),
+    ("AMT_CREDIT", "Montant du crédit (€)", 500000.0, "number"),
+    ("AMT_ANNUITY", "Annuité annuelle (€) — sert au CREDIT_TERM", 25000.0, "number"),
+    ("AMT_INCOME_TOTAL", "Revenu annuel total (€)", 180000.0, "number"),
+    ("DAYS_BIRTH", "Âge (années)", 33.0, "years"),
+    ("DAYS_EMPLOYED", "Ancienneté dans l'emploi (années)", 5.5, "years"),
 ]
 _FORM_KEYS = [key for key, _, _, _ in _FORM_FIELDS]
 _DEFAULTS = [default for _, _, default, _ in _FORM_FIELDS]
 _DRIVERS = {"EXT_SOURCE_1", "EXT_SOURCE_2", "EXT_SOURCE_3"}
+
+
+def _to_display(value: float | None, kind: str) -> float | None:
+    """Valeur modèle → valeur affichée (jours négatifs → années pour ``years``)."""
+    if value is None:
+        return None
+    return round(-value / _DAYS_PER_YEAR, 1) if kind == "years" else value
+
+
+def _to_model(value: float, kind: str) -> float:
+    """Valeur saisie → valeur modèle (années → jours négatifs pour ``years``)."""
+    return -value * _DAYS_PER_YEAR if kind == "years" else value
 
 
 def _load_examples() -> dict[str, dict]:
@@ -48,12 +61,14 @@ def _fill_form(label: str, examples: dict[str, dict]) -> tuple:
     """Renvoie l'état de base + les valeurs des champs pour la sélection.
 
     - « Nouveau client » → base vide + valeurs par défaut.
-    - Client d'exemple → features complètes en base + champs pré-remplis.
+    - Client d'exemple → features complètes en base + champs pré-remplis (âge/
+      ancienneté reconvertis en années pour l'affichage).
     """
     if label == _NEW_CLIENT or label not in examples:
         return ({}, *_DEFAULTS, "")
     feats = examples[label]
-    return (feats, *(feats.get(k) for k in _FORM_KEYS), "")
+    values = (_to_display(feats.get(key), kind) for key, _, _, kind in _FORM_FIELDS)
+    return (feats, *values, "")
 
 
 def _predict(base: dict | None, *form_and_json) -> tuple[dict, str]:
@@ -66,10 +81,10 @@ def _predict(base: dict | None, *form_and_json) -> tuple[dict, str]:
     *form_values, advanced_json = form_and_json
     feats: dict[str, float] = dict(base or {})
 
-    # Champs du formulaire (ignorés si laissés vides).
-    feats.update(
-        {k: float(v) for k, v in zip(_FORM_KEYS, form_values, strict=True) if v is not None}
-    )
+    # Champs du formulaire (ignorés si laissés vides), avec conversion années → jours.
+    for (key, _, _, kind), value in zip(_FORM_FIELDS, form_values, strict=True):
+        if value is not None:
+            feats[key] = float(_to_model(value, kind))
 
     # JSON avancé optionnel (override final) pour atteindre n'importe quelle feature.
     if advanced_json and advanced_json.strip():
@@ -116,7 +131,7 @@ def _predict(base: dict | None, *form_and_json) -> tuple[dict, str]:
 def build_demo() -> gr.Blocks:
     """Construit l'interface Gradio (Blocks) de démonstration de l'API."""
     examples = _load_examples()
-    choices = [_NEW_CLIENT, *examples.keys()]
+    choices = list(examples.keys())
     init_label = next(iter(examples), _NEW_CLIENT)
     init = _fill_form(init_label, examples)
 
@@ -128,27 +143,40 @@ def build_demo() -> gr.Blocks:
             f"(**{predictor.get_model_info()['n_features']} features**), "
             f"seuil métier **{config.DECISION_THRESHOLD:.0%}** — proba ≥ seuil → **refus**.\n\n"
             "Le formulaire expose les features **les plus déterminantes** "
-            "(`EXT_SOURCE_*`, montants…) ; les ~796 autres restent NaN (gérées par "
-            "LightGBM) ou se renseignent via *Avancé*.\n\n"
+            "(`EXT_SOURCE_*`, montants, âge/ancienneté en années) ; les ~796 autres "
+            "restent NaN (gérées par LightGBM) ou se renseignent via *Avancé*.\n\n"
             "👉 API & documentation Swagger : [`/docs`](/docs)."
         )
 
         base_state = gr.State(init[0])
 
         with gr.Row():
-            with gr.Column(scale=1):
-                selector = gr.Dropdown(
-                    choices=choices,
-                    value=init_label,
-                    label="Client",
-                    info="« Nouveau client » pour une saisie libre, ou un profil réel d'exemple.",
-                )
-                fields = []
-                for (_, lbl, _, kind), val in zip(_FORM_FIELDS, init[1:-1], strict=True):
+            with gr.Column(scale=2):
+                with gr.Row():
+                    selector = gr.Dropdown(
+                        choices=choices,
+                        value=init_label,
+                        label="Client d'exemple",
+                        info="Profils réels issus de l'échantillon de référence.",
+                        scale=4,
+                    )
+                    new_btn = gr.Button("➕ Nouveau client", scale=1)
+
+                def _make_field(spec, val):
+                    _, lbl, _, kind = spec
                     if kind == "slider":
-                        fields.append(gr.Slider(0.0, 1.0, value=val, step=0.01, label=lbl))
-                    else:
-                        fields.append(gr.Number(value=val, label=lbl))
+                        return gr.Slider(0.0, 1.0, value=val, step=0.01, label=lbl)
+                    return gr.Number(value=val, label=lbl)
+
+                # Champs disposés 2 par ligne.
+                fields = []
+                form_vals = init[1:-1]
+                for i in range(0, len(_FORM_FIELDS), 2):
+                    with gr.Row():
+                        for spec, val in zip(
+                            _FORM_FIELDS[i : i + 2], form_vals[i : i + 2], strict=True
+                        ):
+                            fields.append(_make_field(spec, val))
                 with gr.Accordion("Avancé — autres features (JSON)", open=False):
                     advanced = gr.Code(
                         value="",
@@ -163,6 +191,10 @@ def build_demo() -> gr.Blocks:
         selector.change(
             fn=lambda label: _fill_form(label, examples),
             inputs=selector,
+            outputs=[base_state, *fields, advanced],
+        )
+        new_btn.click(
+            fn=lambda: _fill_form(_NEW_CLIENT, examples),
             outputs=[base_state, *fields, advanced],
         )
         predict_btn.click(

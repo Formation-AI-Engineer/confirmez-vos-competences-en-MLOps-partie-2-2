@@ -16,3 +16,7 @@ logs/
 *.pdf
 .ipynb_checkpoints/
 monitoring/reports/
+
+# Bundle d'entraînement : source de vérité pour generate_model_artifacts.py
+# (build/CI uniquement). L'API runtime ne le charge jamais, elle lit les JSON dérivés.
+models/lgbm_final_bundle.joblib
