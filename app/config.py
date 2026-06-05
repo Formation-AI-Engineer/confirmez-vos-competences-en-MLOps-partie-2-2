@@ -28,4 +28,11 @@ FEATURE_NAMES_PATH = _resolve(os.getenv("FEATURE_NAMES_PATH", "models/feature_na
 # Seuil de décision métier : refus du crédit si proba de défaut >= seuil.
 DECISION_THRESHOLD = float(os.getenv("DECISION_THRESHOLD", "0.49"))
 
+# --- Monitoring / stockage des données de production (étape 3) ---
+# Base SQLite des appels journalisés (inputs, sortie, latence, statut). Ignorée
+# par git (monitoring/production_logs.*) et hors image Docker.
+LOG_DB_PATH = _resolve(os.getenv("LOG_DB_PATH", "monitoring/production_logs.db"))
+# Active la journalisation des prédictions (désactivable en test / si non voulu).
+MONITORING_ENABLED = os.getenv("MONITORING_ENABLED", "true").lower() in {"1", "true", "yes"}
+
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

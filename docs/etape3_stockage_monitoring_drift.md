@@ -13,15 +13,17 @@ automatiquement ces données pour détecter la **dérive (data drift)** et les *
 ## Tâches
 
 ### 3.1 Logging structuré dans l'API
-- [ ] Logger chaque appel en **JSON** : timestamp, inputs, output (proba + décision), latence, statut
-- [ ] Logger les erreurs (taux d'erreur exploitable ensuite)
-- [ ] S'assurer que les inputs/outputs loggés permettent une **analyse de drift ultérieure**
+- [x] Logger chaque appel : timestamp UTC, inputs (features surveillées), output (proba + décision), latence (`time.perf_counter`), statut HTTP (`app/monitoring.py` ↔ `/predict`)
+- [x] Logger les erreurs d'inférence (`http_status=500` + message → taux d'erreur exploitable)
+- [x] Inputs/outputs loggés exploitables pour le drift : sous-ensemble figé `MONITORED_FEATURES` (**top-30 features par importance**, présentes dans la référence) + features enrichies (`CREDIT_TERM`)
+- [x] Logging **best-effort** (n'échoue jamais une prédiction) + désactivable (`MONITORING_ENABLED`)
 
 ### 3.2 Solution de stockage des données de prod
-- [ ] Choisir le support : fichier JSON/CSV, **SQLite**, ou **PostgreSQL** (PoC local accepté)
-- [ ] Écrire les logs de l'API vers ce stockage
-- [ ] **Screenshots** de la solution de stockage (exigence livrable)
-- [ ] Documenter le schéma des données stockées (RGPD : pas de données sensibles inutiles)
+- [x] Support choisi : **SQLite** (`monitoring/production_logs.db`) — requêtable en SQL, sans serveur, hors git/image Docker
+- [x] Écriture des logs depuis l'API (`init_db` au démarrage, `log_prediction` à chaque appel)
+- [ ] **Screenshots** de la solution de stockage (exigence livrable) — *à faire une fois la base remplie (tâche simulation)*
+- [x] Schéma documenté (table `predictions` : `ts, latency_ms, http_status, probability, decision, n_features_received, error, features`) ; RGPD : features déjà encodées/anonymisées, aucune donnée personnelle directe
+- [x] Tests : `tests/test_monitoring.py` (appel réussi loggé, erreur loggée, monitoring désactivé → rien écrit) — **23 tests verts**
 
 ### 3.3 Analyse du data drift
 - [ ] Définir la **référence** : jeu de validation / `X_val_sample` du Projet 6
