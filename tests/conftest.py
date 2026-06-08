@@ -1,12 +1,17 @@
 """Fixtures partagées — client de test API et payload d'exemple réel."""
 
+import os
 from pathlib import Path
 
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app
+# Désactive la journalisation des prédictions par défaut en test : les tests qui
+# la ciblent (test_monitoring.py) la réactivent sur une base SQLite temporaire.
+os.environ.setdefault("MONITORING_ENABLED", "false")
+
+from app.main import app  # noqa: E402  (après le réglage d'environnement ci-dessus)
 
 ROOT = Path(__file__).resolve().parent.parent
 

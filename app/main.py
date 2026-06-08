@@ -6,21 +6,23 @@ Expose le modèle LightGBM (804 features, seuil métier 0.49) du Projet 6 :
 - ``GET /model/info`` : métadonnées du modèle déployé
 """
 
+import time
 from contextlib import asynccontextmanager
 
 import gradio as gr
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
 
-from app import predictor
+from app import monitoring, predictor
 from app.demo import build_demo
 from app.schemas import ModelInfo, PredictionInput, PredictionOutput
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    """Au démarrage : charge le modèle une seule fois (pas à chaque requête)."""
+    """Au démarrage : charge le modèle une seule fois + initialise le stockage des logs."""
     predictor.load_model()
+    monitoring.init_db()
     yield
 
 
@@ -56,11 +58,28 @@ def health():
     tags=["Prédiction"],
 )
 def predict(payload: PredictionInput) -> PredictionOutput:
-    """Retourne la probabilité de défaut et la décision métier (seuil 0.49)."""
+    """Retourne la probabilité de défaut et la décision métier (seuil 0.49).
+
+    Chaque appel est journalisé (latence, statut, sortie, features) pour le
+    monitoring de production — y compris les erreurs d'inférence.
+    """
+    start = time.perf_counter()
     try:
         result = predictor.predict(payload.features)
     except Exception as exc:  # erreur d'inférence -> 500
+        monitoring.log_prediction(
+            features=predictor.add_derived_features(payload.features),
+            latency_ms=(time.perf_counter() - start) * 1000,
+            http_status=500,
+            error=str(exc),
+        )
         raise HTTPException(status_code=500, detail=f"Erreur de prédiction : {exc}") from exc
+    monitoring.log_prediction(
+        features=predictor.add_derived_features(payload.features),
+        latency_ms=(time.perf_counter() - start) * 1000,
+        http_status=200,
+        result=result,
+    )
     return PredictionOutput(**result)
 
 

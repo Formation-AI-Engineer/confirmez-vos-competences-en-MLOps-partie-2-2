@@ -31,6 +31,7 @@ Mise en production du modèle de scoring crédit développé au Projet 6 (« Ini
 - [Lancer l'API](#lancer-lapi)
 - [Exemples d'appels](#exemples-dappels)
 - [Tests](#tests)
+- [Monitoring du data drift](#monitoring-du-data-drift)
 - [Déploiement](#déploiement)
 - [Structure du projet](#structure-du-projet)
 
@@ -143,11 +144,57 @@ curl http://localhost:8000/model/info
 
 ## Tests
 
-**19 tests** couvrent le health check, une prédiction nominale, les cas critiques (champ manquant, mauvais type → `422`), la feature dérivée `CREDIT_TERM`, le chargement unique du modèle et l'interface de démo (`/demo`) :
+**23 tests** couvrent le health check, une prédiction nominale, les cas critiques (champ manquant, mauvais type → `422`), la feature dérivée `CREDIT_TERM`, le chargement unique du modèle, l'interface de démo (`/demo`) et la journalisation du monitoring (appel réussi/erreur loggé, monitoring désactivé → rien écrit) :
 
 ```bash
 uv run pytest
 ```
+
+## Monitoring du data drift
+
+Chaque appel à `/predict` est journalisé, puis les données de production sont analysées pour détecter la **dérive** (data drift) et les **problèmes opérationnels** (taux d'erreur, latence). Étude complète et recommandations : [`docs/etape3_rapport_drift.md`](docs/etape3_rapport_drift.md).
+
+Prérequis : `uv sync --extra monitoring`.
+
+### 1. Journalisation des prédictions (stockage)
+
+Chaque appel est écrit dans une base **SQLite** (`monitoring/production_logs.db`) : horodatage UTC, latence, statut HTTP, proba + décision, et un sous-ensemble figé des features (top-30 par importance). La journalisation est *best-effort* (n'échoue jamais une prédiction) et désactivable.
+
+| Variable | Description | Défaut |
+|---|---|---|
+| `LOG_DB_PATH` | Base SQLite des appels journalisés | `monitoring/production_logs.db` |
+| `MONITORING_ENABLED` | Active la journalisation | `true` |
+
+RGPD : les features sont déjà encodées/anonymisées (feature engineering du Projet 6) — aucune donnée personnelle directe n'est stockée.
+
+### 2. Générer du trafic de production (PoC)
+
+```bash
+uv run uvicorn app.main:app --port 7860                              # terminal 1
+uv run python scripts/simulate_traffic.py --n 2000 --drift-ratio 0.3 # terminal 2
+```
+
+Rejoue des clients réels (référence) + une fraction **perturbée** (population plus risquée) contre l'API → remplit la base avec un drift contrôlé.
+
+### 3. Analyser le drift (Evidently)
+
+```bash
+uv run python scripts/analyze_drift.py
+```
+
+Compare la prod à la **référence** (`monitoring/reference_sample.parquet`, re-scorée par le modèle) sur les features surveillées **et le score prédit**. Produit `monitoring/reports/drift_report.html` (+ `.json`) et un résumé console des colonnes dérivantes.
+
+### 4. Dashboard de monitoring (Streamlit)
+
+```bash
+uv run streamlit run monitoring/dashboard.py     # → http://localhost:8501
+```
+
+KPI (volume, taux d'erreur, taux de refus, latence moy/p95), distribution des scores prédits, latence d'inférence, débit/erreurs dans le temps, et indicateurs de drift.
+
+### Et en production ?
+
+Le Space Hugging Face déployé **n'expose que l'API** (`/docs`, `/demo`) ; le dashboard Streamlit et le rapport Evidently sont des **outils locaux**. De plus, le système de fichiers d'un Space HF gratuit est **éphémère** (la base SQLite ne survit pas à un rebuild). L'approche retenue est donc un **PoC** : logs générés par l'API, récupérés puis analysés en local. Pour une visualisation en production, il faudrait un **stockage persistant** (HF persistent storage ou une base type PostgreSQL) et un **Space Streamlit dédié** lisant cette base.
 
 ## Déploiement
 
@@ -168,14 +215,11 @@ Le job `deploy` envoie les fichiers nécessaires (Dockerfile, `app/`, `models/`,
 ## Structure du projet
 
 ```
-app/         API FastAPI (config, schemas, predictor, main) + démo Gradio (demo)
-tests/       tests unitaires (pytest)
-scripts/     génération/contrôle des artefacts dérivés du bundle
+app/         API FastAPI (config, schemas, predictor, monitoring, main) + démo Gradio (demo)
+tests/       tests unitaires (pytest, 23 tests)
+scripts/     artefacts dérivés + simulation de trafic + analyse de drift
 models/      artefacts du modèle (issus du Projet 6)
-monitoring/  référence drift + dashboard (étape 3)
-notebooks/   analyses (drift, profiling)
-docs/        fiches d'étape et de suivi
+monitoring/  référence drift, dashboard Streamlit, base de logs + rapports (générés)
+docs/        fiches d'étape, suivi, rapport de drift
 ```
-
-> La section **Monitoring du data drift** sera ajoutée à l'étape 3.
 ```

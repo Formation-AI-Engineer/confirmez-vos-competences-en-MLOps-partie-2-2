@@ -37,7 +37,7 @@ def get_feature_names() -> list[str]:
     return _feature_names
 
 
-def _add_derived_features(features: dict) -> dict:
+def add_derived_features(features: dict) -> dict:
     """Calcule les features dérivées du Projet 6 à partir des valeurs brutes.
 
     Aujourd'hui : ``CREDIT_TERM`` = annuité / crédit — la feature la plus
@@ -59,7 +59,7 @@ def predict(features: dict) -> dict:
     """
     model = load_model()
     names = _feature_names
-    features = _add_derived_features(features)
+    features = add_derived_features(features)
 
     # Alignement sur les 804 features attendues : manquantes -> NaN, inconnues ignorées.
     row = pd.DataFrame([features]).reindex(columns=names).astype("float64")
