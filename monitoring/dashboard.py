@@ -112,15 +112,20 @@ def main() -> None:
     with left:
         st.subheader("Distribution des scores prédits")
         fig = px.histogram(ok, x="probability", color="decision", nbins=50, opacity=0.8)
-        fig.add_vline(x=threshold, line_dash="dash", line_color="red",
-                      annotation_text=f"seuil {threshold}")
+        fig.add_vline(
+            x=threshold, line_dash="dash", line_color="red", annotation_text=f"seuil {threshold}"
+        )
         fig.update_layout(xaxis_title="Probabilité de défaut", yaxis_title="Nombre d'appels")
         st.plotly_chart(fig, use_container_width=True)
     with right:
         st.subheader("Latence d'inférence")
         fig = px.histogram(ok, x="latency_ms", nbins=50)
-        fig.add_vline(x=ok["latency_ms"].quantile(0.95), line_dash="dash", line_color="orange",
-                      annotation_text="p95")
+        fig.add_vline(
+            x=ok["latency_ms"].quantile(0.95),
+            line_dash="dash",
+            line_color="orange",
+            annotation_text="p95",
+        )
         fig.update_layout(xaxis_title="Latence (ms)", yaxis_title="Nombre d'appels")
         st.plotly_chart(fig, use_container_width=True)
 
@@ -154,8 +159,11 @@ def main() -> None:
     else:
         n_drift = sum(c["drift"] for c in columns)
         d1, d2 = st.columns([1, 3])
-        d1.metric("Colonnes dérivantes", f"{n_drift}/{len(columns)}",
-                  delta=f"{share:.0%} du total" if share is not None else None)
+        d1.metric(
+            "Colonnes dérivantes",
+            f"{n_drift}/{len(columns)}",
+            delta=f"{share:.0%} du total" if share is not None else None,
+        )
         pred = next((c for c in columns if c["colonne"] == PREDICTION_COL), None)
         if pred and pred["drift"]:
             d1.error(

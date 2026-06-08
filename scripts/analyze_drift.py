@@ -64,9 +64,7 @@ def load_production() -> pd.DataFrame:
             "SELECT features, probability FROM predictions WHERE http_status = 200"
         ).fetchall()
     if not rows:
-        raise SystemExit(
-            "Aucune prédiction en base. Lance d'abord scripts/simulate_traffic.py."
-        )
+        raise SystemExit("Aucune prédiction en base. Lance d'abord scripts/simulate_traffic.py.")
     feats = pd.json_normalize([json.loads(r[0]) for r in rows])
     feats = feats.reindex(columns=MONITORED_FEATURES)  # aligne + manquantes -> NaN
     feats[PREDICTION_COL] = [r[1] for r in rows]
