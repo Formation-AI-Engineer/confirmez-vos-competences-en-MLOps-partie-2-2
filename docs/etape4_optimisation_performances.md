@@ -13,10 +13,17 @@ optimisée via le pipeline CI/CD.
 
 ## Tâches
 
-### 4.1 Analyse des performances
-- [ ] Exploiter les données de monitoring (latence, temps d'inférence, CPU/mémoire) de l'étape 3
-- [ ] **Profiler** l'API et la prédiction (`cProfile`, timing par étape : preprocessing vs inférence vs sérialisation)
-- [ ] Identifier les **goulots d'étranglement** (chargement, alignement des 804 features, prédiction…)
+### 4.1 Analyse des performances — `scripts/profile_inference.py`
+- [x] Données de monitoring (étape 3) : latence serveur moy **3,4 ms** / p95 **5,2 ms**, 0 erreur — cohérent avec le profiling ci-dessous
+- [x] **Profiling** décomposé (`cProfile` + timing par étape) sur 2000 itérations :
+  - `add_derived_features` : **0,001 ms** (négligeable)
+  - préparation (DataFrame 1×804 + `reindex` + `astype`) : **1,1 ms**
+  - inférence `predict_proba` : **4,4 ms** → `predict()` complet ≈ **5,1 ms**
+- [x] **Goulot identifié = surcoût pandas, pas le calcul des arbres** :
+  - dans LightGBM, `_data_from_pandas` reconvertit le DataFrame en numpy avec un **contrôle de dtype par colonne** : `_is_allowed_numpy_dtype` appelé **1 608 000×** (804 features × 2000) → ~2,8 ms/appel
+  - + construction du DataFrame (`frame.__init__`) et `reindex` côté préparation
+  - ⇒ ~75 % du temps est du **glue pandas↔numpy**, pas l'inférence elle-même
+  - **Piste 4.2** : passer un **numpy array pré-aligné** (ordre des 804 features) au lieu d'un DataFrame, et/ou export **ONNX**
 
 ### 4.2 Stratégies d'optimisation
 - [ ] Tester l'export du modèle en **ONNX** + **ONNX Runtime** pour l'inférence
