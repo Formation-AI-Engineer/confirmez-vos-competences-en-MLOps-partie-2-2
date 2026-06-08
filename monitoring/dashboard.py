@@ -158,7 +158,10 @@ def main() -> None:
                   delta=f"{share:.0%} du total" if share is not None else None)
         pred = next((c for c in columns if c["colonne"] == PREDICTION_COL), None)
         if pred and pred["drift"]:
-            d1.error("⚠️ Le **score prédit** a dérivé : revue de performance / ré-entraînement à envisager.")
+            d1.error(
+                "⚠️ Le **score prédit** a dérivé : "
+                "revue de performance / ré-entraînement à envisager."
+            )
         elif pred:
             d1.success("Score prédit stable.")
         table = pd.DataFrame(columns)

@@ -30,10 +30,11 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))  # rend le paquet ``app`` importable hors install
 
-from app import config, predictor  # noqa: E402
-from app.monitoring import MONITORED_FEATURES  # noqa: E402
 from evidently import DataDefinition, Dataset, Report  # noqa: E402
 from evidently.presets import DataDriftPreset  # noqa: E402
+
+from app import config, predictor  # noqa: E402
+from app.monitoring import MONITORED_FEATURES  # noqa: E402
 
 REFERENCE_PATH = ROOT / "monitoring" / "reference_sample.parquet"
 REPORT_DIR = ROOT / "monitoring" / "reports"
@@ -115,7 +116,8 @@ def summarise(result, html_path: Path) -> None:
     print(f"\n{'DRIFT':<6}{'colonne':<42}{'test':<18}{'seuil':<7}p-value")
     for drifted, column, method, threshold, value in columns:
         tag = " (score prédit)" if column == PREDICTION_COL else ""
-        print(f"{'OUI' if drifted else 'non':<6}{column + tag:<42}{method:<18}{threshold:<7}{round(value, 4)}")
+        status = "OUI" if drifted else "non"
+        print(f"{status:<6}{column + tag:<42}{method:<18}{threshold:<7}{round(value, 4)}")
 
 
 def main() -> None:
