@@ -34,17 +34,17 @@ automatiquement ces données pour détecter la **dérive (data drift)** et les *
 - [x] **Points de vigilance** : 4 colonnes dérivantes / 31 → `EXT_SOURCE_2`, `EXT_SOURCE_3`, `DAYS_BIRTH` et le **score prédit** (p<0.05). Drift injecté partiellement capté (dilution : 30 % de trafic perturbé + référence de 100 lignes)
 - [ ] *(option)* `DataSummaryPreset` pour la **qualité des données** (valeurs manquantes, hors-bornes) — non ajouté pour l'instant
 
-### 3.4 Dashboard / rapport de monitoring
-- [ ] Tableau de bord (**Streamlit** / Dash, ou notebook) avec métriques clés :
-  - [ ] **distribution des scores** prédits
-  - [ ] **latence** de l'API / **temps d'inférence**
-  - [ ] **taux d'erreur** / volume d'appels
-  - [ ] indicateurs de **drift**
-- [ ] Visualisations claires + interprétation
+### 3.4 Dashboard / rapport de monitoring — `monitoring/dashboard.py` (`streamlit run`)
+- [x] Tableau de bord **Streamlit** (lit la base SQLite + `drift_report.json`), KPI + 4 graphiques Plotly :
+  - [x] **distribution des scores** prédits (histogramme coloré par décision + ligne du seuil 0.49)
+  - [x] **latence** d'inférence (histogramme + ligne p95)
+  - [x] **taux d'erreur** / volume d'appels (KPI + débit req/s dans le temps)
+  - [x] indicateurs de **drift** (colonnes dérivantes, table triée, alerte si le score prédit dérive)
+- [x] Visualisations claires + interprétation (alertes contextuelles : 0 erreur, score prédit dérivant)
 
-### 3.5 Restitution
-- [ ] Notebook ou rapport présentant l'étude de drift et les conclusions
-- [ ] Recommandations (ré-entraînement, alertes) en cas de drift avéré
+### 3.5 Restitution — `docs/etape3_rapport_drift.md`
+- [x] Rapport de synthèse présentant l'étude de drift et les conclusions (contexte, méthode, résultats, interprétation)
+- [x] Recommandations : alertes (score prédit, features top-importance, part de colonnes dérivantes), ré-entraînement (conditionné aux labels réels), gouvernance de la référence
 
 ## Points de vigilance
 - **Référence indispensable** pour le drift (sans elle, pas de comparaison).
@@ -58,4 +58,4 @@ automatiquement ces données pour détecter la **dérive (data drift)** et les *
 - Streamlit/Dash, Grafana/Kibana (visualisation).
 - Article « monitoring ML en python », documentation Evidently.
 
-## Statut : À FAIRE
+## Statut : FAIT (reste optionnel : `DataSummaryPreset` qualité des données, captures du dashboard)
