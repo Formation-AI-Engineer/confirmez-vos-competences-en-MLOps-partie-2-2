@@ -22,7 +22,7 @@ automatiquement ces données pour détecter la **dérive (data drift)** et les *
 - [x] Support choisi : **SQLite** (`monitoring/production_logs.db`) — requêtable en SQL, sans serveur, hors git/image Docker
 - [x] Écriture des logs depuis l'API (`init_db` au démarrage, `log_prediction` à chaque appel)
 - [x] **Génération de trafic de production** : `scripts/simulate_traffic.py` rejoue des clients réels (référence) + une fraction **perturbée** (scores externes ↓, montants ↑, âge/ancienneté ↓) contre l'API → remplit la base. Validé : 100 appels, 0 erreur, drift visible sur `EXT_SOURCE_*`
-- [ ] **Screenshots** de la solution de stockage (exigence livrable) — *base remplie, prêt pour la capture (ex. DB Browser for SQLite)*
+- [x] **Screenshots** de la solution de stockage (exigence livrable) — base ouverte dans **DB Browser for SQLite** (`docs/images/etape3/`)
 - [x] Schéma documenté (table `predictions` : `ts, latency_ms, http_status, probability, decision, n_features_received, error, features`) ; RGPD : features déjà encodées/anonymisées, aucune donnée personnelle directe
 - [x] Tests : `tests/test_monitoring.py` (appel réussi loggé, erreur loggée, monitoring désactivé → rien écrit) — **23 tests verts**
 
