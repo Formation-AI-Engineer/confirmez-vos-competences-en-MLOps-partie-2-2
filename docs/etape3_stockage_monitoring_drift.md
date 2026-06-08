@@ -26,12 +26,13 @@ automatiquement ces données pour détecter la **dérive (data drift)** et les *
 - [x] Schéma documenté (table `predictions` : `ts, latency_ms, http_status, probability, decision, n_features_received, error, features`) ; RGPD : features déjà encodées/anonymisées, aucune donnée personnelle directe
 - [x] Tests : `tests/test_monitoring.py` (appel réussi loggé, erreur loggée, monitoring désactivé → rien écrit) — **23 tests verts**
 
-### 3.3 Analyse du data drift
-- [ ] Définir la **référence** : jeu de validation / `X_val_sample` du Projet 6
-- [ ] Comparer la distribution des **features** de prod vs référence (**Evidently AI** ou NannyML)
-- [ ] Comparer la distribution des **scores prédits** (référence vs prod)
-- [ ] Générer un **rapport Evidently** (data drift + qualité des données)
-- [ ] Identifier les **points de vigilance** (features dérivantes, seuils d'alerte)
+### 3.3 Analyse du data drift — `scripts/analyze_drift.py` (Evidently 0.7.21)
+- [x] Référence = `monitoring/reference_sample.parquet` (X_val du Projet 6, 100 lignes) **re-scoré** par le modèle déployé
+- [x] Distribution des **features** prod (2000 logs) vs référence — `DataDriftPreset`, tests K-S / khi-deux / Z-test auto par type
+- [x] Distribution des **scores prédits** : colonne `prediction` surveillée comme une feature (prod = proba loggée, réf = re-score)
+- [x] Rapport **Evidently** : `monitoring/reports/drift_report.html` (+ `drift_report.json` exploitable par le dashboard 3.4)
+- [x] **Points de vigilance** : 4 colonnes dérivantes / 31 → `EXT_SOURCE_2`, `EXT_SOURCE_3`, `DAYS_BIRTH` et le **score prédit** (p<0.05). Drift injecté partiellement capté (dilution : 30 % de trafic perturbé + référence de 100 lignes)
+- [ ] *(option)* `DataSummaryPreset` pour la **qualité des données** (valeurs manquantes, hors-bornes) — non ajouté pour l'instant
 
 ### 3.4 Dashboard / rapport de monitoring
 - [ ] Tableau de bord (**Streamlit** / Dash, ou notebook) avec métriques clés :
