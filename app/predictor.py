@@ -7,18 +7,19 @@ l'API via ``load_model``), puis réutilisés à chaque requête.
 import json
 
 import joblib
-import pandas as pd
+import numpy as np
 
 from app import config
 
 _model = None
 _feature_names: list[str] | None = None
+_feature_index: dict[str, int] | None = None  # nom de feature -> position dans le vecteur
 _meta: dict | None = None
 
 
 def load_model():
     """Charge le modèle, la liste des features et les métadonnées (singleton)."""
-    global _model, _feature_names, _meta
+    global _model, _feature_names, _feature_index, _meta
     if _model is None:
         if not config.MODEL_PATH.exists():
             raise FileNotFoundError(
@@ -27,6 +28,7 @@ def load_model():
             )
         _model = joblib.load(config.MODEL_PATH)
         _feature_names = json.loads(config.FEATURE_NAMES_PATH.read_text(encoding="utf-8"))
+        _feature_index = {name: i for i, name in enumerate(_feature_names)}
         _meta = json.loads(config.MODEL_META_PATH.read_text(encoding="utf-8"))
     return _model
 
@@ -56,16 +58,27 @@ def predict(features: dict) -> dict:
 
     Aligne les features fournies sur les 804 colonnes attendues (ordre du modèle),
     les manquantes devenant NaN, puis applique le seuil de décision métier.
+
+    Optimisation (étape 4.2) : on construit directement un **vecteur numpy**
+    pré-aligné et on appelle ``booster_.predict``, ce qui court-circuite la
+    construction d'un DataFrame pandas **et** le wrapper sklearn ``predict_proba``
+    (validation + contrôle de dtype par colonne). Scores **identiques** au bit
+    près à l'implémentation DataFrame ; ~24× plus rapide (cf. benchmark 4.2).
     """
     model = load_model()
-    names = _feature_names
     features = add_derived_features(features)
 
-    # Alignement sur les 804 features attendues : manquantes -> NaN, inconnues ignorées.
-    row = pd.DataFrame([features]).reindex(columns=names).astype("float64")
-    n_received = sum(1 for k in features if k in set(names))
+    # Vecteur 1×804 aligné sur l'ordre du modèle : manquantes -> NaN (gérées
+    # nativement par LightGBM), inconnues ignorées.
+    row = np.full((1, len(_feature_names)), np.nan, dtype=np.float64)
+    n_received = 0
+    for key, value in features.items():
+        idx = _feature_index.get(key)
+        if idx is not None and value is not None:
+            row[0, idx] = value
+            n_received += 1
 
-    proba = float(model.predict_proba(row)[0, 1])
+    proba = float(model.booster_.predict(row)[0])
     decision = "refusé" if proba >= config.DECISION_THRESHOLD else "accordé"
 
     return {
@@ -73,7 +86,7 @@ def predict(features: dict) -> dict:
         "decision": decision,
         "threshold": config.DECISION_THRESHOLD,
         "n_features_received": n_received,
-        "n_features_expected": len(names),
+        "n_features_expected": len(_feature_names),
     }
 
 
