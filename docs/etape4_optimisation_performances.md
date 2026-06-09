@@ -26,10 +26,25 @@ optimisée via le pipeline CI/CD.
   - **Piste 4.2** : passer un **numpy array pré-aligné** (ordre des 804 features) au lieu d'un DataFrame, et/ou export **ONNX**
 
 ### 4.2 Stratégies d'optimisation
-- [ ] Tester l'export du modèle en **ONNX** + **ONNX Runtime** pour l'inférence
-- [ ] Optimisation de code (vectorisation, pré-allocation, éviter les conversions inutiles)
-- [ ] (Optionnel) quantification / réglage du nombre de threads
-- [ ] Mesurer le gain : temps d'inférence **avant / après** (benchmark reproductible)
+- [x] **Optimisation de code** : vecteur **numpy pré-aligné** (804 features, ordre du modèle) +
+  `booster_.predict` → court-circuite la construction du DataFrame **et** le wrapper sklearn
+  `predict_proba`. Appliqué dans `app/predictor.py`.
+- [x] **Export ONNX + ONNX Runtime** testé (`scripts/export_onnx.py`, extra `onnx`) — mesuré, **non adopté** (cf. décision).
+- [x] **Benchmark reproductible** `scripts/benchmark_optimization.py` (5000 itérations, 100 clients réels) :
+
+  | stratégie | inférence (moy) | vs baseline | écart de score max |
+  |---|---|---|---|
+  | `baseline` (DataFrame + `predict_proba`) | 1,97 ms | — | 0 |
+  | `numpy` (vecteur + `predict_proba`) | 1,19 ms | 1,7× | **0** (identique) |
+  | **`booster` (vecteur + `booster_.predict`)** | **0,05 ms** | **~38×** | **0** (identique) |
+  | `onnx` (ONNX Runtime, float32) | 0,02 ms | ~87× | 1,8e-07 |
+
+- [x] **Décision : on retient `booster` (numpy + `booster_.predict`)**, pas ONNX :
+  - scores **bit-identiques** à la baseline (max|Δ| = 0) → **zéro risque de régression** ; ONNX introduit un écart float32 (~1,8e-07).
+  - **zéro dépendance runtime** ajoutée (LightGBM est déjà requis) → image Docker inchangée, déploiement simple ; ONNX imposerait `onnxruntime` en prod.
+  - le gain *absolu* d'ONNX (0,02 vs 0,05 ms) est **négligeable** : le temps de réponse est dominé par FastAPI + réseau (p95 serveur **5,2 ms**, étape 3), pas par l'inférence.
+  - ⇒ ONNX (`scripts/export_onnx.py`, extra `onnx`, artefact `models/*.onnx` gitignoré) reste **documenté et reproductible** pour justifier le choix, mais hors production.
+- [x] Threads / quantification : non nécessaires — l'inférence n'est plus le goulot après ce gain de ~38×.
 
 ### 4.3 Non-régression
 - [ ] Vérifier que l'optimisation **n'altère pas** les prédictions (mêmes scores / même AUC)

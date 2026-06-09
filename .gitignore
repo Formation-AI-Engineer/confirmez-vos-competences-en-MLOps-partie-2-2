@@ -27,6 +27,9 @@ monitoring/production_logs.*
 monitoring/reports/
 *.html.bak
 
+# Artefact ONNX — régénérable via scripts/export_onnx.py, non adopté en prod (étape 4.2)
+models/*.onnx
+
 # IDE / OS
 .idea/
 .vscode/
