@@ -71,16 +71,26 @@ optimisée via le pipeline CI/CD.
   → preuve de **non-régression en ligne**. Validé en local (54 ms aller-retour) ; à relancer après le déploiement HF :
   `python scripts/smoke_test.py`.
 
-### 4.5 Rapport & justification
-- [ ] Rapport : tests effectués, goulots identifiés, résultats chiffrés
-- [ ] Justification de la **configuration finale** (librairies, software, hardware)
-- [ ] Démonstration de l'amélioration du temps d'inférence/réponse
+### 4.5 Rapport & justification — `docs/etape4_rapport_optimisation.md`
+- [x] **Rapport de restitution** complet (livrable) : contexte, méthode, goulot identifié, stratégies
+  testées et chiffrées, non-régression, config finale, re-déploiement, conclusion.
+- [x] **Tests effectués + goulots + résultats chiffrés** : profiling (glue pandas, ~75 % du temps) +
+  benchmark des 3 stratégies (numpy 1,7× / booster ~38× / onnx ~87×) avec écart de score.
+- [x] **Justification de la configuration finale** (librairies / software / hardware) : `booster`
+  numpy retenu, ONNX écarté, versions épinglées, image `python:3.10-slim`, CPU suffisant (modèle d'arbres).
+- [x] **Amélioration démontrée** : 1,97 ms → 0,05 ms par appel (**~38×**), zéro régression de score.
 
 ## Clôture du projet
-- [ ] **README final** : comment lancer l'API + comment interpréter le monitoring
-- [ ] Fiche d'**auto-évaluation** OpenClassrooms complétée
-- [ ] Préparation de la **soutenance** (livrables + choix techniques justifiés)
-- [ ] Vérifier l'historique de commits (livrable « historique des versions »)
+- [x] **README final** : section *Optimisation des performances* ajoutée, compteur de tests 23 → 27,
+  structure et sommaire à jour. Couvre lancement de l'API, monitoring **et** optimisation/smoke test.
+- [ ] Fiche d'**auto-évaluation** OpenClassrooms complétée *(à faire hors dépôt, sur le template OC)*
+- [x] Préparation de la **soutenance** : plan complet dans `docs/soutenance_plan.md` (déroulé slides,
+  script de démo live, Q&A jury avec réponses, fil rouge).
+- [x] **Historique de commits** vérifié : 26 commits, un par tâche, messages explicites en anglais.
+  ⚠️ **`main` n'a que le commit initial** — tout le projet est sur `dev`. Le job `deploy` ne tournant que
+  sur `main`, il faut **merger `dev` → `main`** pour déclencher le déploiement CI/CD final.
+  Doublons mineurs à signaler (push rejoués) : `add inference profiling script`,
+  `fix lint errors in drift script and dashboard`, `CI/CD pipeline...` (×2 chacun).
 
 ## Points de vigilance
 - Baser les hypothèses d'optimisation sur les **données de monitoring réelles**.
@@ -91,4 +101,4 @@ optimisée via le pipeline CI/CD.
 - `cProfile`, ONNX Runtime.
 - Documentation cProfile, ONNX Runtime Home.
 
-## Statut : À FAIRE
+## Statut : FAIT (tâches 4.1 → 4.5)
