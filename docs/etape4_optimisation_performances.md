@@ -60,9 +60,16 @@ optimisée via le pipeline CI/CD.
 - [x] Suite complète : **27 tests passent** (23 → 27), ruff propre.
 
 ### 4.4 Re-déploiement
-- [ ] Intégrer la version optimisée au dépôt
-- [ ] Laisser le **pipeline CI/CD** la tester, builder et déployer
-- [ ] Confirmer le déploiement et re-tester l'URL publique
+- [x] **Version optimisée intégrée** au dépôt : l'optimisation vit dans `app/predictor.py` (le code de
+  l'API lui-même) — aucun nouvel artefact ni dépendance runtime. ONNX écarté ⇒ image Docker **inchangée**
+  (toujours `pip install .` sans extra). `.dockerignore` étendu : le `.onnx` de benchmark ne peut pas entrer dans l'image.
+- [x] **Pipeline CI/CD** (`.github/workflows/ci-cd.yml`) : `lint (ruff)` → `test (pytest, dont les 4 tests de
+  non-régression 4.3 + `--check` artefacts)` → `build (docker)` → `deploy (HF Spaces via scripts/deploy_hf.py)`.
+  Le déploiement ne part que sur `main`/tags ⇒ le re-déploiement se déclenche au **merge `dev` → `main`**.
+- [x] **Re-test de l'URL publique** : `scripts/smoke_test.py` interroge le Space déployé
+  (`/health`, `/model/info`, `/predict`) et vérifie que le **client de référence rend toujours 0,367 / accordé**
+  → preuve de **non-régression en ligne**. Validé en local (54 ms aller-retour) ; à relancer après le déploiement HF :
+  `python scripts/smoke_test.py`.
 
 ### 4.5 Rapport & justification
 - [ ] Rapport : tests effectués, goulots identifiés, résultats chiffrés
