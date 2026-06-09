@@ -46,10 +46,18 @@ optimisée via le pipeline CI/CD.
   - ⇒ ONNX (`scripts/export_onnx.py`, extra `onnx`, artefact `models/*.onnx` gitignoré) reste **documenté et reproductible** pour justifier le choix, mais hors production.
 - [x] Threads / quantification : non nécessaires — l'inférence n'est plus le goulot après ce gain de ~38×.
 
-### 4.3 Non-régression
-- [ ] Vérifier que l'optimisation **n'altère pas** les prédictions (mêmes scores / même AUC)
-- [ ] Vérifier l'absence de régression de **précision / biais**
-- [ ] Valider la **compatibilité** avec l'environnement de production
+### 4.3 Non-régression — `tests/test_non_regression.py` (4 tests)
+- [x] **Mêmes scores / même AUC** : `test_scores_bit_identical` reconstruit l'ancienne implémentation
+  (DataFrame + `predict_proba`) et la compare au chemin optimisé (`booster_.predict`) sur **les 100 clients
+  réels** de la référence → écart de score max **= 0** (identique au bit près).
+- [x] **Précision / biais** : scores bit-identiques ⇒ **même courbe ROC, même AUC, même précision et même biais
+  à n'importe quel seuil** (corollaire mathématique : aucun label requis). `test_decisions_unchanged` le confirme
+  côté métier — **aucune décision ne bascule** au seuil 0,49.
+- [x] **Cohérence de l'endpoint** : `test_endpoint_matches_legacy` vérifie que `/predict` (chemin optimisé)
+  reproduit exactement le score arrondi de l'ancienne implémentation.
+- [x] **Compatibilité environnement de prod** : `test_inference_path_has_no_pandas` garantit que l'inférence
+  ne dépend plus de pandas (100 % numpy + LightGBM) → mêmes versions épinglées qu'au Projet 6, image plus légère.
+- [x] Suite complète : **27 tests passent** (23 → 27), ruff propre.
 
 ### 4.4 Re-déploiement
 - [ ] Intégrer la version optimisée au dépôt
