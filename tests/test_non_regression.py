@@ -29,10 +29,7 @@ from .conftest import ROOT
 def reference_payloads() -> list[dict]:
     """Tous les clients de la référence, en payloads bruts (NaN exclus)."""
     ref = pd.read_parquet(ROOT / "monitoring" / "reference_sample.parquet")
-    return [
-        {k: float(v) for k, v in row.items() if pd.notna(v)}
-        for row in ref.to_dict("records")
-    ]
+    return [{k: float(v) for k, v in row.items() if pd.notna(v)} for row in ref.to_dict("records")]
 
 
 def legacy_proba(features: dict, names: list[str], model) -> float:
