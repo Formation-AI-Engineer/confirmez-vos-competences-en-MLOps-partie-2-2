@@ -4,11 +4,11 @@ En l'absence de trafic réel, ce script génère des données de production
 réalistes : il rejoue des clients de l'échantillon de référence (Projet 6) et,
 pour une fraction d'entre eux, **décale les features les plus déterminantes** afin
 de provoquer un *data drift* visible. Chaque requête passe par ``POST /predict``,
-donc l'API la **journalise** dans la base SQLite de monitoring (tâche 3.1/3.2) —
+donc l'API la **journalise** dans la base PostgreSQL de monitoring (tâche 3.1/3.2) —
 ce sont ces logs qu'analysera Evidently (tâche suivante).
 
-Prérequis : l'API doit tourner (en local par défaut, pour remplir la base locale
-``monitoring/production_logs.db``) ::
+Prérequis : l'API doit tourner et écrire dans la base (``DATABASE_URL``) — en local,
+le Postgres Docker (``docker compose up -d db``) ::
 
     uvicorn app.main:app --port 7860            # dans un terminal
     python scripts/simulate_traffic.py --n 2000 --drift-ratio 0.3
@@ -138,7 +138,7 @@ def main() -> None:
         f"  Erreurs            : {errors}\n"
         f"  Taux de refus      : {refus_rate}\n"
         f"  Latence client     : moy {lat.mean():.1f} ms | p95 {np.percentile(lat, 95):.1f} ms\n"
-        "  → logs écrits dans monitoring/production_logs.db (côté API)."
+        "  → logs écrits dans PostgreSQL via DATABASE_URL (côté API)."
     )
 
 

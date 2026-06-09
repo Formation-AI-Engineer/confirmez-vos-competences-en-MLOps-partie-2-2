@@ -32,6 +32,7 @@ Mise en production du modèle de scoring crédit développé au Projet 6 (« Ini
 - [Exemples d'appels](#exemples-dappels)
 - [Tests](#tests)
 - [Monitoring du data drift](#monitoring-du-data-drift)
+- [Optimisation des performances](#optimisation-des-performances)
 - [Déploiement](#déploiement)
 - [Structure du projet](#structure-du-projet)
 
@@ -144,7 +145,7 @@ curl http://localhost:8000/model/info
 
 ## Tests
 
-**23 tests** couvrent le health check, une prédiction nominale, les cas critiques (champ manquant, mauvais type → `422`), la feature dérivée `CREDIT_TERM`, le chargement unique du modèle, l'interface de démo (`/demo`) et la journalisation du monitoring (appel réussi/erreur loggé, monitoring désactivé → rien écrit) :
+**27 tests** couvrent le health check, une prédiction nominale, les cas critiques (champ manquant, mauvais type → `422`), la feature dérivée `CREDIT_TERM`, le chargement unique du modèle, l'interface de démo (`/demo`), la journalisation du monitoring (appel réussi/erreur loggé, monitoring désactivé → rien écrit) et la **non-régression** de l'optimisation d'inférence (scores identiques à l'implémentation initiale) :
 
 ```bash
 uv run pytest
@@ -152,20 +153,25 @@ uv run pytest
 
 ## Monitoring du data drift
 
-Chaque appel à `/predict` est journalisé, puis les données de production sont analysées pour détecter la **dérive** (data drift) et les **problèmes opérationnels** (taux d'erreur, latence). Étude complète et recommandations : [`docs/etape3_rapport_drift.md`](docs/etape3_rapport_drift.md).
+Chaque appel à `/predict` est journalisé dans **PostgreSQL**, puis les données de production sont analysées pour détecter la **dérive** (data drift) et les **problèmes opérationnels** (taux d'erreur, latence). Étude complète et recommandations : [`docs/etape3_rapport_drift.md`](docs/etape3_rapport_drift.md).
 
-Prérequis : `uv sync --extra monitoring`.
+Prérequis : `uv sync --extra monitoring` + une base PostgreSQL démarrée :
+
+```bash
+docker compose up -d db        # Postgres local (miroir de Neon en prod)
+cp .env.example .env.local     # puis renseigner DATABASE_URL (NE PAS committer)
+```
 
 ### 1. Journalisation des prédictions (stockage)
 
-Chaque appel est écrit dans une base **SQLite** (`monitoring/production_logs.db`) : horodatage UTC, latence, statut HTTP, proba + décision, et un sous-ensemble figé des features (top-30 par importance). La journalisation est *best-effort* (n'échoue jamais une prédiction) et désactivable.
+Chaque appel est écrit dans **PostgreSQL** (`DATABASE_URL`) : horodatage UTC, latence, statut HTTP, proba + décision, et un sous-ensemble figé des features (top-30 par importance, en **JSONB**). La journalisation est *best-effort* (n'échoue jamais une prédiction), réutilise un **pool de connexions** et est désactivable.
 
 | Variable | Description | Défaut |
 |---|---|---|
-| `LOG_DB_PATH` | Base SQLite des appels journalisés | `monitoring/production_logs.db` |
+| `DATABASE_URL` | URL PostgreSQL (Docker local / Neon en prod) | `postgresql://scoring:scoring@localhost:5432/scoring` |
 | `MONITORING_ENABLED` | Active la journalisation | `true` |
 
-RGPD : les features sont déjà encodées/anonymisées (feature engineering du Projet 6) — aucune donnée personnelle directe n'est stockée.
+Stockage : **Docker local** en dev, **Neon** (Postgres serverless) en production — l'URL Neon est fournie via le secret `DATABASE_URL`, jamais committée. RGPD : les features sont déjà encodées/anonymisées (feature engineering du Projet 6) — aucune donnée personnelle directe n'est stockée.
 
 ### 2. Générer du trafic de production (PoC)
 
@@ -192,9 +198,35 @@ uv run streamlit run monitoring/dashboard.py     # → http://localhost:8501
 
 KPI (volume, taux d'erreur, taux de refus, latence moy/p95), distribution des scores prédits, latence d'inférence, débit/erreurs dans le temps, et indicateurs de drift.
 
-### Et en production ?
+### En production
 
-Le Space Hugging Face déployé **n'expose que l'API** (`/docs`, `/demo`) ; le dashboard Streamlit et le rapport Evidently sont des **outils locaux**. De plus, le système de fichiers d'un Space HF gratuit est **éphémère** (la base SQLite ne survit pas à un rebuild). L'approche retenue est donc un **PoC** : logs générés par l'API, récupérés puis analysés en local. Pour une visualisation en production, il faudrait un **stockage persistant** (HF persistent storage ou une base type PostgreSQL) et un **Space Streamlit dédié** lisant cette base.
+Le monitoring est **persistant** : l'API déployée (Space HF) écrit chaque prédiction dans **Neon** (PostgreSQL serverless), et un **Space Streamlit dédié** ([`scoring-credit-stream`](https://huggingface.co/spaces/lcamara/scoring-credit-stream)) lit cette même base pour afficher le dashboard en ligne. Le code du Space est dans [`streamlit_space/`](streamlit_space/). Plus de système de fichiers éphémère : les données survivent aux redéploiements.
+
+Il reste deux secrets à définir côté Hugging Face : `DATABASE_URL` (URL Neon) dans **les deux Spaces** (l'API en écriture, le dashboard en lecture).
+
+## Optimisation des performances
+
+Le temps d'inférence a été profilé puis optimisé (étape 4). Le profiling a montré que le goulot
+n'était **pas le calcul des arbres** mais le **glue pandas↔numpy** (~75 % du temps). Le chemin
+d'inférence construit désormais un **vecteur numpy pré-aligné** et appelle directement
+`booster_.predict`, court-circuitant la construction du DataFrame **et** le wrapper sklearn
+`predict_proba` : **~38× plus rapide** (1,97 ms → 0,05 ms par appel), avec des scores **identiques
+au bit près** (zéro régression, prouvée par `tests/test_non_regression.py`) et **aucune dépendance
+ajoutée**. ONNX a été testé puis écarté (gain absolu négligeable face au coût d'une dépendance runtime).
+
+Étude complète, benchmark chiffré et justification de la configuration finale :
+[`docs/etape4_rapport_optimisation.md`](docs/etape4_rapport_optimisation.md).
+
+```bash
+uv run python scripts/profile_inference.py        # profiling décomposé (4.1)
+uv run python scripts/benchmark_optimization.py   # benchmark des stratégies (4.2)
+```
+
+Après un (re-)déploiement, vérifier l'URL publique (non-régression en ligne) :
+
+```bash
+uv run python scripts/smoke_test.py               # /health, /model/info, /predict
+```
 
 ## Déploiement
 
@@ -216,10 +248,9 @@ Le job `deploy` envoie les fichiers nécessaires (Dockerfile, `app/`, `models/`,
 
 ```
 app/         API FastAPI (config, schemas, predictor, monitoring, main) + démo Gradio (demo)
-tests/       tests unitaires (pytest, 23 tests)
-scripts/     artefacts dérivés + simulation de trafic + analyse de drift
+tests/       tests unitaires (pytest, 27 tests dont la non-régression de l'optimisation)
+scripts/     artefacts dérivés, trafic, drift, profiling/benchmark, export ONNX, smoke test, deploy
 models/      artefacts du modèle (issus du Projet 6)
 monitoring/  référence drift, dashboard Streamlit, base de logs + rapports (générés)
-docs/        fiches d'étape, suivi, rapport de drift
-```
+docs/        fiches d'étape, suivi, rapports de drift et d'optimisation
 ```

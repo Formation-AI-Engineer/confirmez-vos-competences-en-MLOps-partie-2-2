@@ -10,9 +10,13 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
-
 ROOT_DIR = Path(__file__).resolve().parent.parent
+
+# Secrets locaux d'abord (``.env.local``, gitignoré : URL Neon, etc.), puis ``.env``.
+# ``load_dotenv`` n'écrase pas une variable déjà définie : ``.env.local`` est donc
+# prioritaire sur ``.env``, et les vraies variables d'environnement (CI) priment sur tout.
+load_dotenv(ROOT_DIR / ".env.local")
+load_dotenv(ROOT_DIR / ".env")
 
 
 def _resolve(value: str) -> Path:
@@ -29,9 +33,11 @@ FEATURE_NAMES_PATH = _resolve(os.getenv("FEATURE_NAMES_PATH", "models/feature_na
 DECISION_THRESHOLD = float(os.getenv("DECISION_THRESHOLD", "0.49"))
 
 # --- Monitoring / stockage des données de production (étape 3) ---
-# Base SQLite des appels journalisés (inputs, sortie, latence, statut). Ignorée
-# par git (monitoring/production_logs.*) et hors image Docker.
-LOG_DB_PATH = _resolve(os.getenv("LOG_DB_PATH", "monitoring/production_logs.db"))
+# Base PostgreSQL des appels journalisés (inputs, sortie, latence, statut).
+# - en local : conteneur Docker (cf. docker-compose.yml) ;
+# - en production : Neon (Postgres serverless), URL fournie via le secret DATABASE_URL.
+# Le secret n'est jamais committé ; seul ce défaut local l'est.
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://scoring:scoring@localhost:5432/scoring")
 # Active la journalisation des prédictions (désactivable en test / si non voulu).
 MONITORING_ENABLED = os.getenv("MONITORING_ENABLED", "true").lower() in {"1", "true", "yes"}
 

@@ -18,6 +18,9 @@ dependencies = [
     "uvicorn[standard]>=0.30.0",
     "pydantic>=2.7.0",
     "python-dotenv>=1.0.0",
+    # --- Stockage des logs de production (PostgreSQL : local Docker / Neon en prod) ---
+    "psycopg[binary]>=3.2",
+    "psycopg-pool>=3.2",
     # --- Interface de démo (montée sous /demo) ---
     "gradio>=4.44.0",
 ]
@@ -44,6 +47,8 @@ onnx = [
     "skl2onnx>=1.17.0",
     "onnxruntime>=1.18.0,<1.24",  # 1.24 abandonne les wheels cp310
 ]
+# Génération du support de soutenance (scripts/generate_slides.py).
+slides = ["python-pptx>=1.0"]
 
 [tool.ruff]
 line-length = 100

@@ -1,0 +1,22 @@
+[project]
+name = "scoring-credit-dashboard"
+version = "0.1.0"
+description = "Dashboard de monitoring (Streamlit) — lit Neon, API de scoring crédit (Projet 8)"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "streamlit>=1.36.0",
+    "pandas>=2.0.0",
+    "plotly>=5.22.0",
+    "pyarrow>=15.0.0",
+    "psycopg[binary]>=3.2",
+    "evidently>=0.7,<0.8",
+]
+
+[tool.uv]
+# Projet « applicatif » (app.py lancé directement) : pas de build/packaging,
+# uv n'installe que les dépendances — cohérent avec le reste du dépôt (uv + pyproject).
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
