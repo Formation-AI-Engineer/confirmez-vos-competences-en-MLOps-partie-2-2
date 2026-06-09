@@ -20,12 +20,11 @@ Prérequis : base de prod remplie (``scripts/simulate_traffic.py``) et extra
 
 from __future__ import annotations
 
-import json
-import sqlite3
 import sys
 from pathlib import Path
 
 import pandas as pd
+import psycopg
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))  # rend le paquet ``app`` importable hors install
@@ -59,13 +58,14 @@ def load_reference() -> pd.DataFrame:
 
 def load_production() -> pd.DataFrame:
     """Production = features + proba journalisées (appels réussis uniquement)."""
-    with sqlite3.connect(config.LOG_DB_PATH) as conn:
+    with psycopg.connect(config.DATABASE_URL) as conn:
         rows = conn.execute(
             "SELECT features, probability FROM predictions WHERE http_status = 200"
         ).fetchall()
     if not rows:
         raise SystemExit("Aucune prédiction en base. Lance d'abord scripts/simulate_traffic.py.")
-    feats = pd.json_normalize([json.loads(r[0]) for r in rows])
+    # ``features`` est en JSONB -> psycopg le renvoie déjà décodé en dict.
+    feats = pd.json_normalize([r[0] for r in rows])
     feats = feats.reindex(columns=MONITORED_FEATURES)  # aligne + manquantes -> NaN
     feats[PREDICTION_COL] = [r[1] for r in rows]
     cols = [f for f in MONITORED_FEATURES if f in feats.columns] + [PREDICTION_COL]

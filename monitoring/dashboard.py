@@ -1,7 +1,7 @@
 """Dashboard de monitoring de production (étape 3.4) — Streamlit.
 
-Lit la base SQLite des appels journalisés (``monitoring/production_logs.db``) et
-le rapport de drift (``monitoring/reports/drift_report.json``) pour afficher :
+Lit la base PostgreSQL des appels journalisés (``DATABASE_URL``) et le rapport de
+drift (``monitoring/reports/drift_report.json``) pour afficher :
 - des **KPI** : volume d'appels, taux d'erreur, taux de refus, latence (moy / p95) ;
 - la **distribution des scores prédits** (avec le seuil de décision métier) ;
 - la **latence** d'inférence ;
@@ -16,12 +16,12 @@ Lancement (extra ``monitoring`` installé, base remplie) ::
 from __future__ import annotations
 
 import json
-import sqlite3
 import sys
 from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
+import psycopg
 import streamlit as st
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -36,14 +36,17 @@ PREDICTION_COL = "prediction"
 
 @st.cache_data(ttl=30)
 def load_logs() -> pd.DataFrame:
-    """Charge les appels journalisés depuis SQLite (cache 30 s)."""
-    if not config.LOG_DB_PATH.exists():
+    """Charge les appels journalisés depuis PostgreSQL (cache 30 s)."""
+    try:
+        with psycopg.connect(config.DATABASE_URL) as conn:
+            df = pd.read_sql(
+                "SELECT ts, latency_ms, http_status, probability, decision "
+                "FROM predictions ORDER BY ts",
+                conn,
+            )
+    except Exception:
+        # Base inaccessible (non démarrée, mauvaise URL) -> dashboard vide + message.
         return pd.DataFrame()
-    with sqlite3.connect(config.LOG_DB_PATH) as conn:
-        df = pd.read_sql(
-            "SELECT ts, latency_ms, http_status, probability, decision FROM predictions",
-            conn,
-        )
     if not df.empty:
         df["ts"] = pd.to_datetime(df["ts"])
     return df
@@ -82,8 +85,8 @@ def main() -> None:
     df = load_logs()
     if df.empty:
         st.warning(
-            "Aucune donnée. Lance l'API puis `python scripts/simulate_traffic.py` "
-            "pour remplir `monitoring/production_logs.db`."
+            "Aucune donnée (base PostgreSQL vide ou inaccessible). Vérifie `DATABASE_URL`, "
+            "lance l'API puis `python scripts/simulate_traffic.py` pour remplir la base."
         )
         st.stop()
 

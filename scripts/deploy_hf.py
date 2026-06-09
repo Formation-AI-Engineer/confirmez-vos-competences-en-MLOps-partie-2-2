@@ -26,6 +26,8 @@ IGNORE_PATTERNS = [
     "tests/*",
     "scripts/*",
     "monitoring/*",
+    "streamlit_space/*",  # contenu du Space Streamlit dédié, pas de l'API
+    "docker-compose.yml",
     "**/__pycache__/*",
     ".pytest_cache/*",
     ".ruff_cache/*",

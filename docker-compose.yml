@@ -1,0 +1,23 @@
+# Postgres local pour le monitoring (étape 3) — miroir de Neon en production.
+# Démarrage : docker compose up -d db
+# L'API lit l'URL via DATABASE_URL (cf. .env.local / .env.example).
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: scoring-postgres
+    environment:
+      POSTGRES_USER: scoring
+      POSTGRES_PASSWORD: scoring
+      POSTGRES_DB: scoring
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scoring"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pgdata:

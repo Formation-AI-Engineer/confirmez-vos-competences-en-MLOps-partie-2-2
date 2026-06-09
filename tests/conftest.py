@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 # Désactive la journalisation des prédictions par défaut en test : les tests qui
-# la ciblent (test_monitoring.py) la réactivent sur une base SQLite temporaire.
+# la ciblent (test_monitoring.py) la réactivent sur la base PostgreSQL de test.
 os.environ.setdefault("MONITORING_ENABLED", "false")
 
 from app.main import app  # noqa: E402  (après le réglage d'environnement ci-dessus)
