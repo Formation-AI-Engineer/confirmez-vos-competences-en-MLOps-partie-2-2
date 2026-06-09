@@ -37,6 +37,13 @@ dev = [
     "jupyter>=1.0.0",
     "ipykernel>=6.0.0",
 ]
+# Export + runtime ONNX — uniquement pour le benchmark d'optimisation (étape 4.2).
+# Non adopté en production (cf. docs/etape4) : absent de l'image Docker de l'API.
+onnx = [
+    "onnxmltools>=1.16.0",
+    "skl2onnx>=1.17.0",
+    "onnxruntime>=1.18.0,<1.24",  # 1.24 abandonne les wheels cp310
+]
 
 [tool.ruff]
 line-length = 100
