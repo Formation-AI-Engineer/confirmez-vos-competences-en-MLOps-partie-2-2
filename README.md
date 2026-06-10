@@ -18,9 +18,10 @@ Mise en production du modèle de scoring crédit développé au Projet 6 (« Ini
 
 ## Démo en ligne
 
-- **Space Hugging Face** : <https://huggingface.co/spaces/lcamara/scoring-credit-pret-a-depenser>
+- **Space Hugging Face (API)** : <https://huggingface.co/spaces/lcamara/scoring-credit-pret-a-depenser>
 - **Swagger UI** : <https://lcamara-scoring-credit-pret-a-depenser.hf.space/docs>
 - **Interface de démo (Gradio)** : <https://lcamara-scoring-credit-pret-a-depenser.hf.space/demo>
+- **Dashboard de monitoring (Streamlit)** : <https://huggingface.co/spaces/lcamara/scoring-credit-stream> (app directe : <https://lcamara-scoring-credit-stream.hf.space>)
 
 ## Démarrage rapide
 
