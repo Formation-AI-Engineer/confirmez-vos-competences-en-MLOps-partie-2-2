@@ -101,6 +101,11 @@ def main() -> None:
     st.set_page_config(page_title="Monitoring — Scoring crédit", layout="wide")
     st.title("📊 Monitoring de production — API de scoring crédit")
 
+    # Les données sont mises en cache 30 s ; ce bouton force un rechargement immédiat.
+    if st.button("🔄 Rafraîchir les données"):
+        st.cache_data.clear()
+        st.rerun()
+
     if not DATABASE_URL:
         st.error("Le secret `DATABASE_URL` (URL Neon) n'est pas défini dans les Settings du Space.")
         st.stop()

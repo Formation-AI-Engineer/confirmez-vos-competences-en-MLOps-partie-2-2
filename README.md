@@ -239,6 +239,28 @@ Le service `traffic` (profil dédié, ne démarre pas par défaut) attend que l'
 
 > Le script peut aussi viser l'**API déployée** : `--url https://lcamara-scoring-credit-pret-a-depenser.hf.space` (remplit alors Neon). Pour du trafic ponctuel sans script, Swagger (`/docs`) et la démo Gradio (`/demo`) génèrent aussi des appels journalisés, une requête à la fois.
 
+#### Réinitialiser la base
+
+> **Vider les lignes, garder la table** (repartir d'un jeu propre, sans rien reconstruire) :
+>
+> ```bash
+> docker compose exec db psql -U scoring -d scoring -c "TRUNCATE predictions RESTART IDENTITY;"
+> ```
+>
+> **Tout détruire** (volume Postgres inclus — base recréée au prochain `docker compose up`) :
+>
+> ```bash
+> docker compose down -v
+> ```
+>
+> | Commande | Conteneurs | Données |
+> |---|---|---|
+> | `TRUNCATE predictions …` | inchangés | lignes effacées, **table conservée** |
+> | `docker compose down` | supprimés | **conservées** (volume `pgdata`) |
+> | `docker compose down -v` | supprimés | **effacées** (volume supprimé) |
+>
+> ⚠️ `-v` est **destructif et irréversible** (données locales perdues). Sans effet sur **Neon** (base distante séparée).
+
 ### 3. Analyser le drift (Evidently)
 
 ```bash
