@@ -6,14 +6,18 @@ formulaire des features **les plus déterminantes** du modèle (scores externes
 d'exemple, ou passer par le JSON avancé pour atteindre n'importe quelle feature ;
 puis obtenir la **probabilité de défaut** et la **décision métier**. Tourne dans
 le même process que l'API (appel direct de ``predictor``), sous ``/demo``.
+
+Comme l'endpoint ``/predict``, chaque prédiction est **journalisée** (best-effort)
+pour le monitoring : les tests via la démo apparaissent donc dans le dashboard.
 """
 
 import json
+import time
 from pathlib import Path
 
 import gradio as gr
 
-from app import config, predictor
+from app import config, monitoring, predictor
 
 _EXAMPLES_PATH = Path(__file__).resolve().parent / "demo_examples.json"
 _NEW_CLIENT = "➕ Nouveau client (saisie libre)"
@@ -102,7 +106,16 @@ def _predict(base: dict | None, *form_and_json) -> tuple[dict, str]:
     if not feats:
         raise gr.Error("Renseigner au moins une feature.")
 
+    # Même chemin journalisé que POST /predict : on mesure la latence et on
+    # enregistre l'appel (best-effort) pour que la démo alimente le monitoring.
+    start = time.perf_counter()
     result = predictor.predict(feats)
+    monitoring.log_prediction(
+        features=predictor.add_derived_features(feats),
+        latency_ms=(time.perf_counter() - start) * 1000,
+        http_status=200,
+        result=result,
+    )
     proba = result["probability"]
     decision = result["decision"]
 
