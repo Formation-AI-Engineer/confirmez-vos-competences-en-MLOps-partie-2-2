@@ -1,6 +1,11 @@
-# Postgres local pour le monitoring (étape 3) — miroir de Neon en production.
-# Démarrage : docker compose up -d db
-# L'API lit l'URL via DATABASE_URL (cf. .env.local / .env.example).
+# Stack locale complète (API + Postgres) — miroir de la prod (HF Space + Neon).
+#
+#   docker compose up                       → Postgres + API (:7860) + dashboard Streamlit (:8501)
+#   docker compose up -d db                 → Postgres seul (si l'API tourne via uvicorn)
+#   docker compose --profile traffic up     → stack par défaut + génération de trafic (PoC drift)
+#
+# En local, l'API utilise le Postgres du compose (DATABASE_URL ci-dessous).
+# En prod, c'est Neon qui est injecté via le secret DATABASE_URL du Space.
 services:
   db:
     image: postgres:16-alpine
@@ -18,6 +23,54 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  api:
+    build: .
+    container_name: scoring-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Le service "db" est joignable par son nom sur le réseau du compose.
+      DATABASE_URL: postgresql://scoring:scoring@db:5432/scoring
+    ports:
+      - "7860:7860"
+
+  # Générateur de trafic (PoC drift) — démarre seulement avec --profile traffic.
+  # Réutilise l'image de l'API (numpy/pandas/pyarrow déjà présents) ; on monte
+  # scripts/ + monitoring/ (référence) et on ajoute httpx, dépendance de dev non
+  # embarquée dans l'image de prod. Tourne une fois puis s'arrête.
+  traffic:
+    build: .
+    profiles: ["traffic"]
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./monitoring:/app/monitoring:ro
+    entrypoint: ["sh", "-c"]
+    # N et DRIFT surchargeables : N=5000 DRIFT=0.5 docker compose --profile traffic up traffic
+    command:
+      - >
+        pip install --quiet httpx &&
+        python scripts/simulate_traffic.py
+        --url http://api:7860
+        --n ${N:-2000}
+        --drift-ratio ${DRIFT:-0.3}
+
+  # Dashboard de monitoring — l'image EXACTE du Space HF (streamlit_space/),
+  # mais branchée sur le Postgres local au lieu de Neon. Démarre avec la stack
+  # par défaut. UI sur http://localhost:8501.
+  dashboard:
+    build: ./streamlit_space
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://scoring:scoring@db:5432/scoring
+    ports:
+      - "8501:7860"
 
 volumes:
   pgdata:
